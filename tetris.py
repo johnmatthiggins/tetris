@@ -23,8 +23,8 @@ env = GBGym()
 # if GPU is to be used
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-Transition = namedtuple('Transition',
-                        ('state', 'action', 'next_state', 'reward'))
+Transition = namedtuple("Transition", ("state", "action", "next_state", "reward"))
+
 
 class ReplayMemory(object):
     def __init__(self, capacity):
@@ -42,40 +42,22 @@ class ReplayMemory(object):
 
 
 class TetrisNN(nn.Module):
-    def __init__(self, n_observations, n_actions):
+    def __init__(self, n_actions):
         super().__init__()
-        self.conv1 = nn.Conv2d(3, 8, kernel_size=(6,6), stride=1, padding=1)
-        self.act1 = nn.ReLU()
-        self.drop1 = nn.Dropout(0.3)
-
-        self.conv2 = nn.Conv2d(32, 32, kernel_size=(3,3), stride=1, padding=1)
-        self.act2 = nn.ReLU()
-        self.pool2 = nn.MaxPool2d(kernel_size=(2, 2))
-
-        self.flat = nn.Flatten()
-
-        self.fc3 = nn.Linear(8192, 512)
-        self.act3 = nn.ReLU()
-        self.drop3 = nn.Dropout(0.5)
-
-        self.fc4 = nn.Linear(512, 6)
+        self.conv1 = nn.Conv2d(3, 6, 5)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.conv2 = nn.Conv2d(6, 16, 5)
+        self.fc1 = nn.Linear(16 * 5 * 5, 120)
+        self.fc2 = nn.Linear(120, 84)
+        self.fc3 = nn.Linear(84, n_actions)
 
     def forward(self, x):
-        # input 3x32x32, output 32x32x32
-        x = self.act1(self.conv1(x))
-        x = self.drop1(x)
-        # input 32x32x32, output 32x32x32
-        x = self.act2(self.conv2(x))
-        # input 32x32x32, output 32x16x16
-        x = self.pool2(x)
-        # input 32x16x16, output 8192
-        x = self.flat(x)
-        # input 8192, output 512
-        x = self.act3(self.fc3(x))
-        x = self.drop3(x)
-        # input 512, output 10
-        x = self.fc4(x)
-
+        x = self.pool(F.relu(self.conv1(x)))
+        x = self.pool(F.relu(self.conv2(x)))
+        x = torch.flatten(x, 1) # flatten all dimensions except batch
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
         return x
 
 
@@ -99,10 +81,9 @@ n_actions = env.action_space.shape[0]
 
 # Get the number of state observations
 state, info = env.reset()
-n_observations = len(state)
 
-policy_net = TetrisNN(n_observations, n_actions).to(device)
-target_net = TetrisNN(n_observations, n_actions).to(device)
+policy_net = TetrisNN(n_actions).to(device)
+target_net = TetrisNN(n_actions).to(device)
 target_net.load_state_dict(policy_net.state_dict())
 
 optimizer = optim.SGD(policy_net.parameters(), lr=LR, momentum=0.9)
@@ -113,18 +94,26 @@ steps_done = 0
 def select_action(state):
     global steps_done
     sample = random.random()
-    eps_threshold = EPS_END + (EPS_START - EPS_END) * math.exp(-1. * steps_done / EPS_DECAY)
+    eps_threshold = EPS_END + (EPS_START - EPS_END) * math.exp(
+        -1.0 * steps_done / EPS_DECAY
+    )
     steps_done += 1
     if sample > eps_threshold:
         with torch.no_grad():
             # t.max(1) will return the largest column value of each row.
             # second column on max result is index of where max element was
             # found, so we pick action with the larger expected reward.
-            return policy_net(state).max(1)[1].view(1, 1)
+            result = policy_net(state).max(1)[1]
+            print(result.shape)
+            return result.view(1, 1)
     else:
-        return torch.tensor([[np.random.choice(env.action_space)]], device=device, dtype=torch.long)
+        return torch.tensor(
+            [[np.random.choice(env.action_space)]], device=device, dtype=torch.long
+        )
+
 
 episode_durations = list()
+
 
 def plot_durations(show_result=False):
     durations_t = torch.tensor(episode_durations, dtype=torch.float)
@@ -133,12 +122,14 @@ def plot_durations(show_result=False):
         means = durations_t.unfold(0, 100, 1).mean(1).view(-1)
         means = torch.cat((torch.zeros(99), means))
 
-    df = pd.DataFrame.from_dict({
-        'episode_duration': durations_t.numpy(),
-        'episode_index': np.arange(0, len(durations_t)),
-    })
+    df = pd.DataFrame.from_dict(
+        {
+            "episode_duration": durations_t.numpy(),
+            "episode_index": np.arange(0, len(durations_t)),
+        }
+    )
 
-    fig = px.line(df, x='episode_duration', y='episode_index')
+    fig = px.line(df, x="episode_duration", y="episode_index")
     fig.show()
 
 
@@ -153,10 +144,12 @@ def optimize_model():
 
     # Compute a mask of non-final states and concatenate the batch elements
     # (a final state would've been the one after which simulation ended)
-    non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
-                                          batch.next_state)), device=device, dtype=torch.bool)
-    non_final_next_states = torch.cat([s for s in batch.next_state
-                                                if s is not None])
+    non_final_mask = torch.tensor(
+        tuple(map(lambda s: s is not None, batch.next_state)),
+        device=device,
+        dtype=torch.bool,
+    )
+    non_final_next_states = torch.cat([s for s in batch.next_state if s is not None])
     state_batch = torch.cat(batch.state)
     action_batch = torch.cat(batch.action)
     reward_batch = torch.cat(batch.reward)
@@ -185,9 +178,11 @@ def optimize_model():
     # Optimize the model
     optimizer.zero_grad()
     loss.backward()
+
     # In-place gradient clipping
     torch.nn.utils.clip_grad_value_(policy_net.parameters(), 100)
     optimizer.step()
+
 
 if torch.cuda.is_available():
     num_episodes = 600
@@ -208,7 +203,9 @@ for i_episode in range(num_episodes):
         if terminated:
             next_state = None
         else:
-            next_state = torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
+            next_state = torch.tensor(
+                observation, dtype=torch.float32, device=device
+            ).unsqueeze(0)
 
         # Store the transition in memory
         memory.push(state, action, next_state, reward)
@@ -223,8 +220,11 @@ for i_episode in range(num_episodes):
         # θ′ ← τ θ + (1 −τ )θ′
         target_net_state_dict = target_net.state_dict()
         policy_net_state_dict = policy_net.state_dict()
+
         for key in policy_net_state_dict:
-            target_net_state_dict[key] = policy_net_state_dict[key]*TAU + target_net_state_dict[key]*(1-TAU)
+            target_net_state_dict[key] = policy_net_state_dict[
+                key
+            ] * TAU + target_net_state_dict[key] * (1 - TAU)
         target_net.load_state_dict(target_net_state_dict)
 
         if done:

@@ -22,9 +22,10 @@ RIGHT_ACTION = 4
 ROTATE_ACTION = 5
 NO_ACTION = 6
 
+
 class GBGym(Env):
     def __init__(self):
-        self.game_over_screen = np.load('game_over.npy')
+        self.game_over_screen = np.load("game_over.npy")
 
         self.gameboy = start_gameboy()
         self.sm = self.gameboy.botsupport_manager()
@@ -35,7 +36,7 @@ class GBGym(Env):
     def score(self):
         game_score = read_score(self.sm.screen().screen_ndarray())
         return game_score
-    
+
     # step moves forward two frames...
     def step(self, action):
         gb = self.gameboy
@@ -75,9 +76,9 @@ class GBGym(Env):
 
         # reward is how much the score improved...
         reward = new_score - old_score
-        
+
         # get numpy array that represents pixels...
-        observation = torch.tensor(self.sm.screen().screen_ndarray())
+        observation = torch.from_numpy(self.sm.screen().screen_ndarray())
 
         truncated = False
         terminated = self.is_game_over()
@@ -90,26 +91,28 @@ class GBGym(Env):
 
     def is_game_over(self):
         rgb_screen = self.sm.screen().screen_ndarray()
-        relevant_part = rgb_screen[21:68 + 1, 29:84 + 1]
+        relevant_part = rgb_screen[21 : 68 + 1, 29 : 84 + 1]
         return np.all(relevant_part == self.game_over_screen)
-
 
     def close(self):
         self.gameboy.stop()
 
     def reset(self):
+        # just return an empty dict because info isn't being used...
         info = dict()
-        f = open('start2.state', 'rb')
+
+        f = open("start2.state", "rb")
         self.gameboy.load_state(f)
         f.close()
 
-        state = self.sm.screen().screen_ndarray()
+        state = torch.from_numpy(self.sm.screen().screen_ndarray())
         return (state, info)
+
 
 def main():
     with start_gameboy() as gb:
         sm = gb.botsupport_manager()
-        game_over_screen = np.load('game_over.npy')
+        game_over_screen = np.load("game_over.npy")
         old_game_score = 0
 
         while not gb.tick():
@@ -119,22 +122,27 @@ def main():
                 print(game_score)
                 old_game_score = game_score
 
-            screen = sm.screen().screen_ndarray()[21:68 + 1, 29:84 + 1]
+            screen = sm.screen().screen_ndarray()[21 : 68 + 1, 29 : 84 + 1]
             is_game_over = np.all(screen == game_over_screen)
 
             if is_game_over:
-                print('GAME IS OVER :(')
+                print("GAME IS OVER :(")
                 input()
 
 
 def start_gameboy():
-    gb = pb.PyBoy('tetris_dx.sgb')
+    gb = pb.PyBoy("tetris_dx.sgb")
 
     gb.set_emulation_speed(target_speed=0)
 
-    f = open('start2.state', 'rb')
+    f = open("start2.state", "rb")
     gb.load_state(f)
     f.close()
+
+    gb.send_input(pb.WindowEvent.PRESS_BUTTON_START)
+    gb.tick()
+    gb.send_input(pb.WindowEvent.RELEASE_BUTTON_START)
+    gb.tick()
 
     return gb
 
@@ -157,5 +165,5 @@ def wait_n_seconds(gb, n):
         i += 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

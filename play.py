@@ -2,6 +2,7 @@
 from game import GBGym
 import numpy as np
 
+
 def main():
     gb = GBGym()
 
@@ -11,5 +12,6 @@ def main():
 
     gb.close()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
