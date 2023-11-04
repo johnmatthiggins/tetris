@@ -2,3 +2,4 @@ tetris_dx.gbc
 tetris_dx.sgb
 *.ram
 __pycache__
+venv
