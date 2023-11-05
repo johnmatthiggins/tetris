@@ -22,7 +22,6 @@ RIGHT_ACTION = 4
 ROTATE_ACTION = 5
 NO_ACTION = 6
 
-
 class GBGym(Env):
     def __init__(self):
         self.game_over_screen = np.load("game_over.npy")
