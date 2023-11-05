@@ -58,7 +58,7 @@ class TetrisNN(nn.Module):
         x = self.pool(F.relu(self.conv3(x)))
         x = self.pool(F.relu(self.conv4(x)))
         x = self.pool(F.relu(self.conv5(x)))
-        x = torch.flatten(x, 1)  # flatten all dimensions except batch
+        x = torch.flatten(x, 1)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
@@ -80,6 +80,11 @@ EPS_DECAY = 1000
 TAU = 0.005
 LR = 1e-3
 
+MEMORY_LENGTH_SECONDS = 2
+
+# save the last n seconds
+MEMORY_SIZE = MEMORY_LENGTH_SECONDS * 30
+
 # Get number of actions from gym action space
 n_actions = env.action_space.shape[0]
 
@@ -90,8 +95,8 @@ policy_net = TetrisNN(n_actions).to(device)
 target_net = TetrisNN(n_actions).to(device)
 target_net.load_state_dict(policy_net.state_dict())
 
-optimizer = optim.SGD(policy_net.parameters(), lr=LR, momentum=0.9)
-memory = ReplayMemory(60)
+optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
+memory = ReplayMemory(MEMORY_SIZE)
 
 steps_done = 0
 

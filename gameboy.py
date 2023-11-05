@@ -14,6 +14,7 @@ from score import read_score
 
 FPS = 60
 
+
 class GBGym(Env):
     def __init__(self):
         self.game_over_screen = np.load("game_over.npy")
@@ -74,9 +75,11 @@ class GBGym(Env):
         cropped_screen = self.sm.screen().screen_ndarray()
 
         observation = torch.from_numpy(
-            np.reshape(cropped_screen, newshape=(3, cropped_screen.shape[0], cropped_screen.shape[1]))
+            np.reshape(
+                cropped_screen,
+                newshape=(3, cropped_screen.shape[0], cropped_screen.shape[1]),
+            )
         )
-
 
         truncated = False
         terminated = self.is_game_over()
@@ -105,7 +108,10 @@ class GBGym(Env):
         cropped_screen = self.sm.screen().screen_ndarray()
 
         state = torch.from_numpy(
-            np.reshape(cropped_screen, newshape=(3, cropped_screen.shape[0], cropped_screen.shape[1]))
+            np.reshape(
+                cropped_screen,
+                newshape=(3, cropped_screen.shape[0], cropped_screen.shape[1]),
+            )
         )
 
         return (state, info)
