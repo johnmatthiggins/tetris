@@ -42,11 +42,13 @@ class ReplayMemory(object):
 class TetrisNN(nn.Module):
     def __init__(self, n_actions):
         super().__init__()
-        self.conv1 = nn.Conv2d(3, 10, 5)
+        self.conv1 = nn.Conv2d(3, 32, 5)
         self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(10, 16, 5)
-        self.conv3 = nn.Conv2d(16, 10, 5)
-        self.fc1 = nn.Linear(2240, 120)
+        self.conv2 = nn.Conv2d(32, 32, 5)
+        self.conv3 = nn.Conv2d(32, 32, 5)
+        self.conv4 = nn.Conv2d(32, 16, 3)
+        self.conv5 = nn.Conv2d(16, 8, 3)
+        self.fc1 = nn.Linear(32, 120)
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, n_actions)
 
@@ -54,6 +56,8 @@ class TetrisNN(nn.Module):
         x = self.pool(F.relu(self.conv1(x)))
         x = self.pool(F.relu(self.conv2(x)))
         x = self.pool(F.relu(self.conv3(x)))
+        x = self.pool(F.relu(self.conv4(x)))
+        x = self.pool(F.relu(self.conv5(x)))
         x = torch.flatten(x, 1)  # flatten all dimensions except batch
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
@@ -187,7 +191,7 @@ def optimize_model():
 if torch.cuda.is_available():
     num_episodes = 600
 else:
-    num_episodes = 50
+    num_episodes = 100
 
 for i_episode in range(num_episodes):
     # Initialize the environment and get it's state
