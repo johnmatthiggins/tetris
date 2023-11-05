@@ -77,7 +77,10 @@ class GBGym(Env):
         reward = new_score - old_score
 
         # get numpy array that represents pixels...
-        observation = torch.from_numpy(self.sm.screen().screen_ndarray())
+        observation = torch.from_numpy(
+                np.reshape(self.sm.screen().screen_ndarray(), newshape=(3, 144, 160))
+            )
+        print('observation shape: %s' %(str(observation.shape)))
 
         truncated = False
         terminated = self.is_game_over()
