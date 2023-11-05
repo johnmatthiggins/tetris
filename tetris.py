@@ -14,7 +14,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
-from game import GBGym
+from gameboy import GBGym
 
 env = GBGym()
 
@@ -86,7 +86,7 @@ target_net = TetrisNN(n_actions).to(device)
 target_net.load_state_dict(policy_net.state_dict())
 
 optimizer = optim.SGD(policy_net.parameters(), lr=LR, momentum=0.9)
-memory = ReplayMemory(10 * 60)
+memory = ReplayMemory(60)
 
 steps_done = 0
 
@@ -112,7 +112,6 @@ def select_action(state):
 
 
 episode_durations = list()
-
 
 def plot_durations(show_result=False):
     durations_t = torch.tensor(episode_durations, dtype=torch.float)
@@ -228,7 +227,7 @@ for i_episode in range(num_episodes):
 
         if done:
             episode_durations.append(t + 1)
-            plot_durations()
+            # plot_durations()
             break
 
 plot_durations(show_result=True)

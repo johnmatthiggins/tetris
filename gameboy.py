@@ -30,7 +30,7 @@ class GBGym(Env):
         self.sm = self.gameboy.botsupport_manager()
 
         # different actions possible...
-        self.action_space = np.arange(1, 7)
+        self.action_space = np.arange(0, 6)
 
     def score(self):
         game_score = read_score(self.sm.screen().screen_ndarray())
@@ -41,31 +41,31 @@ class GBGym(Env):
         gb = self.gameboy
         old_score = self.score()
         match action:
-            case 1:
+            case 0:
                 gb.send_input(pb.WindowEvent.PRESS_ARROW_UP)
                 gb.tick()
                 gb.send_input(pb.WindowEvent.RELEASE_ARROW_UP)
-            case 2:
+            case 1:
                 gb.send_input(pb.WindowEvent.PRESS_ARROW_DOWN)
                 gb.tick()
                 gb.send_input(pb.WindowEvent.RELEASE_ARROW_DOWN)
                 gb.tick()
-            case 3:
+            case 2:
                 gb.send_input(pb.WindowEvent.PRESS_ARROW_LEFT)
                 gb.tick()
                 gb.send_input(pb.WindowEvent.RELEASE_ARROW_LEFT)
                 gb.tick()
-            case 4:
+            case 3:
                 gb.send_input(pb.WindowEvent.PRESS_ARROW_RIGHT)
                 gb.tick()
                 gb.send_input(pb.WindowEvent.RELEASE_ARROW_RIGHT)
                 gb.tick()
-            case 5:
+            case 4:
                 gb.send_input(pb.WindowEvent.PRESS_BUTTON_A)
                 gb.tick()
                 gb.send_input(pb.WindowEvent.RELEASE_BUTTON_A)
                 gb.tick()
-            case 6:
+            case 5:
                 gb.tick()
                 gb.tick()
             case _:
@@ -106,8 +106,8 @@ class GBGym(Env):
         f = open("start2.state", "rb")
         self.gameboy.load_state(f)
         f.close()
+        state = np.reshape(self.sm.screen().screen_ndarray(), newshape=(3, 144, 160))
 
-        state = torch.from_numpy(self.sm.screen().screen_ndarray())
         return (state, info)
 
 
