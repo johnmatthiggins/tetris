@@ -13,15 +13,6 @@ import pyboy as pb
 from score import read_score
 
 FPS = 60
-GAME_SPEED = 2
-
-UP_ACTION = 1
-DOWN_ACTION = 2
-LEFT_ACTION = 3
-RIGHT_ACTION = 4
-ROTATE_ACTION = 5
-NO_ACTION = 6
-
 
 class GBGym(Env):
     def __init__(self):
@@ -32,6 +23,7 @@ class GBGym(Env):
 
         # different actions possible...
         self.action_space = np.arange(0, 6)
+        self.current_score = 0
 
     def score(self):
         game_score = read_score(self.sm.screen().screen_ndarray())
@@ -40,7 +32,6 @@ class GBGym(Env):
     # step moves forward two frames...
     def step(self, action):
         gb = self.gameboy
-        old_score = self.score()
         match action:
             case 0:
                 gb.send_input(pb.WindowEvent.PRESS_ARROW_UP)
@@ -75,12 +66,17 @@ class GBGym(Env):
         new_score = self.score()
 
         # reward is how much the score improved...
-        reward = new_score - old_score
+        reward = new_score - self.current_score
+        self.current_score = new_score
 
         # get numpy array that represents pixels...
+        # chop out all the details other than the board...
+        cropped_screen = self.sm.screen().screen_ndarray()
+
         observation = torch.from_numpy(
-            np.reshape(self.sm.screen().screen_ndarray(), newshape=(3, 144, 160))
+            np.reshape(cropped_screen, newshape=(3, cropped_screen.shape[0], cropped_screen.shape[1]))
         )
+
 
         truncated = False
         terminated = self.is_game_over()
@@ -106,7 +102,11 @@ class GBGym(Env):
         f = open("start2.state", "rb")
         self.gameboy.load_state(f)
         f.close()
-        state = np.reshape(self.sm.screen().screen_ndarray(), newshape=(3, 144, 160))
+        cropped_screen = self.sm.screen().screen_ndarray()
+
+        state = torch.from_numpy(
+            np.reshape(cropped_screen, newshape=(3, cropped_screen.shape[0], cropped_screen.shape[1]))
+        )
 
         return (state, info)
 
@@ -118,7 +118,13 @@ def main():
         old_game_score = 0
 
         while not gb.tick():
-            game_score = read_score(sm.screen().screen_ndarray())
+            wait_n_seconds(gb, 2)
+            screen = sm.screen().screen_ndarray()
+            # game_score = read_score(screen)
+
+            fig = px.imshow(screen)
+            fig.show()
+            input()
 
             if old_game_score != game_score:
                 print(game_score)
