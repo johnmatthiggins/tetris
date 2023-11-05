@@ -22,6 +22,7 @@ RIGHT_ACTION = 4
 ROTATE_ACTION = 5
 NO_ACTION = 6
 
+
 class GBGym(Env):
     def __init__(self):
         self.game_over_screen = np.load("game_over.npy")
@@ -78,9 +79,8 @@ class GBGym(Env):
 
         # get numpy array that represents pixels...
         observation = torch.from_numpy(
-                np.reshape(self.sm.screen().screen_ndarray(), newshape=(3, 144, 160))
-            )
-        print('observation shape: %s' %(str(observation.shape)))
+            np.reshape(self.sm.screen().screen_ndarray(), newshape=(3, 144, 160))
+        )
 
         truncated = False
         terminated = self.is_game_over()

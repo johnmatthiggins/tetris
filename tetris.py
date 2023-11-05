@@ -50,10 +50,9 @@ class TetrisNN(nn.Module):
         self.fc3 = nn.Linear(84, n_actions)
 
     def forward(self, x):
-        print('forward input shape: ', x.shape)
         x = self.pool(F.relu(self.conv1(x)))
         x = self.pool(F.relu(self.conv2(x)))
-        x = torch.flatten(x, 1) # flatten all dimensions except batch
+        x = torch.flatten(x, 1)  # flatten all dimensions except batch
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
@@ -90,6 +89,7 @@ memory = ReplayMemory(60)
 
 steps_done = 0
 
+
 def select_action(state):
     global steps_done
     sample = random.random()
@@ -103,7 +103,6 @@ def select_action(state):
             # second column on max result is index of where max element was
             # found, so we pick action with the larger expected reward.
             result = policy_net(state).max(1)[1]
-            print(result.shape)
             return result.view(1, 1)
     else:
         return torch.tensor(
@@ -112,6 +111,7 @@ def select_action(state):
 
 
 episode_durations = list()
+
 
 def plot_durations(show_result=False):
     durations_t = torch.tensor(episode_durations, dtype=torch.float)
@@ -191,6 +191,7 @@ for i_episode in range(num_episodes):
     # Initialize the environment and get it's state
     state, info = env.reset()
     state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
+    print("Starting episode... [%d/%d]" % (i_episode + 1, num_episodes))
 
     for t in count():
         action = select_action(state)
