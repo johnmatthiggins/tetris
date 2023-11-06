@@ -61,10 +61,10 @@ class TetrisNN(nn.Module):
         super().__init__()
         self.conv1 = nn.Conv2d(3, 32, 5)
         self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(32, 32, 5)
-        self.conv3 = nn.Conv2d(32, 32, 5)
-        self.conv4 = nn.Conv2d(32, 16, 3)
-        self.conv5 = nn.Conv2d(16, 8, 3)
+        self.conv2 = nn.Conv2d(32, 128, 5)
+        self.conv3 = nn.Conv2d(128, 64, 5)
+        self.conv4 = nn.Conv2d(64, 32, 3)
+        self.conv5 = nn.Conv2d(32, 8, 3)
         self.fc1 = nn.Linear(32, 120)
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, n_actions)
@@ -137,9 +137,7 @@ def select_action(state):
             [[np.random.choice(env.action_space)]], device=device, dtype=torch.long
         )
 
-
 episode_durations = list()
-
 
 def plot_durations(show_result=False):
     durations_t = torch.tensor(episode_durations, dtype=torch.float)

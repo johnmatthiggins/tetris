@@ -14,7 +14,6 @@ from score import read_score
 
 FPS = 60
 
-
 class GBGym(Env):
     def __init__(self):
         self.game_over_screen = np.load("game_over.npy")
@@ -116,6 +115,28 @@ class GBGym(Env):
 
         return (state, info)
 
+# move can be any value from 0 up to and including 13.
+# the move is a binary buffer composed of two pieces of information...
+# the first 2 bits from starting at the least significant bit are
+# reserved for determining the rotational position of the piece.
+# 00 => default position (no rotation)
+# 01 => single rotation
+# 10 => double rotation
+# 11 => triple rotation (one rotation the other way)
+# The next four bits are reserved for the position of the block horizontally.
+# (0000, 1001) <= this doesn't use up the full range of our four bits but that's okay...
+# because we only are using 0 to 13 we only need 14 output nodes on our neural network.
+def _make_move(gb, move):
+    rotations = move & 0x03
+    horizontal_position = (move & ~0x03) >> 2
+
+    for _ in range(rotations):
+        gb.send_input(pb.WindowEvent.PRESS_BUTTON_A)
+        gb.tick()
+        gb.send_input(pb.WindowEvent.RELEASE_BUTTON_A)
+        gb.tick()
+        gb.tick()
+
 
 def main():
     with start_gameboy() as gb:
@@ -126,15 +147,10 @@ def main():
         while not gb.tick():
             wait_n_seconds(gb, 2)
             screen = sm.screen().screen_ndarray()
-            # game_score = read_score(screen)
 
-            fig = px.imshow(screen)
-            fig.show()
-            input()
-
-            if old_game_score != game_score:
-                print(game_score)
-                old_game_score = game_score
+            # if old_game_score != game_score:
+            #     print(game_score)
+            #     old_game_score = game_score
 
             screen = sm.screen().screen_ndarray()[21 : 68 + 1, 29 : 84 + 1]
             is_game_over = np.all(screen == game_over_screen)
@@ -147,7 +163,7 @@ def main():
 def start_gameboy():
     gb = pb.PyBoy("tetris_dx.sgb")
 
-    gb.set_emulation_speed(target_speed=0)
+    gb.set_emulation_speed(target_speed=1)
 
     f = open("start2.state", "rb")
     gb.load_state(f)
