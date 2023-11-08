@@ -102,11 +102,11 @@ class GBGym(Env):
 
         # get numpy array that represents pixels...
         # chop out all the details other than the board...
-        cropped_screen = self.sm.screen().screen_ndarray()
+        cropped_screen = cv2.cvtColor(self.sm.screen().screen_ndarray(), cv2.COLOR_BGR2GRAY)
 
         reshaped = np.reshape(
             cropped_screen,
-            newshape=(3, cropped_screen.shape[0], cropped_screen.shape[1]),
+            newshape=(1, cropped_screen.shape[0], cropped_screen.shape[1]),
         )
         observation = torch.tensor(reshaped, device=self.device, dtype=torch.float32)
 
@@ -134,12 +134,12 @@ class GBGym(Env):
         f = open("start2.state", "rb")
         self.gameboy.load_state(f)
         f.close()
-        cropped_screen = self.sm.screen().screen_ndarray()
+        cropped_screen = cv2.cvtColor(self.sm.screen().screen_ndarray(), cv2.COLOR_BGR2GRAY)
 
         state = torch.tensor(
             np.reshape(
                 cropped_screen,
-                newshape=(3, cropped_screen.shape[0], cropped_screen.shape[1]),
+                newshape=(1, cropped_screen.shape[0], cropped_screen.shape[1]),
             ),
             device=self.device,
             dtype=torch.float32,
