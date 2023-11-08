@@ -16,23 +16,27 @@ import torch.nn.functional as F
 
 from gameboy import GBGym
 
-env = GBGym()
-
 # if GPU is to be used
 device = "cpu"
 
 if not torch.backends.mps.is_available():
     if not torch.backends.mps.is_built():
-        print("MPS not available because the current PyTorch install was not "
-              "built with MPS enabled.")
+        print(
+            "MPS not available because the current PyTorch install was not "
+            "built with MPS enabled."
+        )
     else:
-        print("MPS not available because the current MacOS version is not 12.3+ "
-              "and/or you do not have an MPS-enabled device on this machine.")
+        print(
+            "MPS not available because the current MacOS version is not 12.3+ "
+            "and/or you do not have an MPS-enabled device on this machine."
+        )
 
 if torch.backends.mps.is_available():
     device = "mps"
 elif torch.cuda.is_available():
     device = "cuda"
+
+env = GBGym(device)
 
 print('Using "%s" for device' % device)
 
@@ -40,9 +44,9 @@ torch.device(device)
 
 Transition = namedtuple("Transition", ("state", "action", "next_state", "reward"))
 
-
 class ReplayMemory(object):
     def __init__(self, capacity):
+        print('MEMORY_LENGTH = %d' % capacity)
         self.memory = deque([], maxlen=capacity)
 
     def push(self, *args):
@@ -65,13 +69,13 @@ class TetrisNN(nn.Module):
         self.conv3 = nn.Conv2d(128, 64, 5)
         self.conv4 = nn.Conv2d(64, 32, 3)
         self.conv5 = nn.Conv2d(32, 8, 3)
-        self.fc1 = nn.Linear(32, 32)
+        self.fc1 = nn.Linear(336, 32)
         self.fc2 = nn.Linear(32, 32)
         self.fc3 = nn.Linear(32, 32)
         self.fc4 = nn.Linear(32, n_actions)
 
     def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
+        x = F.relu(self.conv1(x))
         x = self.pool(F.relu(self.conv2(x)))
         x = self.pool(F.relu(self.conv3(x)))
         x = self.pool(F.relu(self.conv4(x)))
@@ -91,7 +95,7 @@ class TetrisNN(nn.Module):
 # EPS_DECAY controls the rate of exponential decay of epsilon, higher means a slower decay
 # TAU is the update rate of the target network
 # LR is the learning rate of the ``SGD`` optimizer
-BATCH_SIZE = 128
+BATCH_SIZE = 10
 GAMMA = 0.99
 EPS_START = 0.9
 EPS_END = 0.05
@@ -99,10 +103,10 @@ EPS_DECAY = 1000
 TAU = 0.005
 LR = 1e-3
 
-MEMORY_LENGTH_SECONDS = 2
+MEMORY_LENGTH_SECONDS = 5
 
 # save the last n seconds
-MEMORY_SIZE = MEMORY_LENGTH_SECONDS * 30
+MEMORY_SIZE = int(MEMORY_LENGTH_SECONDS * 7.5)
 
 # Get number of actions from gym action space
 n_actions = env.action_space.shape[0]
@@ -139,7 +143,9 @@ def select_action(state):
             [[np.random.choice(env.action_space)]], device=device, dtype=torch.long
         )
 
+
 episode_durations = list()
+
 
 def plot_durations(show_result=False):
     durations_t = torch.tensor(episode_durations, dtype=torch.float)
@@ -155,7 +161,7 @@ def plot_durations(show_result=False):
         }
     )
 
-    fig = px.line(df, x="episode_duration", y="episode_index")
+    fig = px.line(df, x="episode_index", y="episode_duration")
     fig.show()
 
 
@@ -213,12 +219,12 @@ def optimize_model():
 if torch.cuda.is_available():
     num_episodes = 600
 else:
-    num_episodes = 100
+    num_episodes = 1000
 
 for i_episode in range(num_episodes):
     # Initialize the environment and get it's state
     state, info = env.reset()
-    state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
+    state = state.unsqueeze(0)
     print("Starting episode... [%d/%d]" % (i_episode + 1, num_episodes))
 
     for t in count():
@@ -230,9 +236,7 @@ for i_episode in range(num_episodes):
         if terminated:
             next_state = None
         else:
-            next_state = torch.tensor(
-                observation, dtype=torch.float32, device=device
-            ).unsqueeze(0)
+            next_state = observation.unsqueeze(0)
 
         # Store the transition in memory
         memory.push(state, action, next_state, reward)

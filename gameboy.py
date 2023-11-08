@@ -14,15 +14,17 @@ from score import read_score
 
 FPS = 60
 
+
 class GBGym(Env):
-    def __init__(self):
+    def __init__(self, device):
+        self.device = device
         self.game_over_screen = np.load("game_over.npy")
 
         self.gameboy = start_gameboy()
         self.sm = self.gameboy.botsupport_manager()
 
         # different actions possible...
-        self.action_space = np.arange(0, 6)
+        self.action_space = np.arange(0, 7)
         self.current_score = 0
 
     def score(self):
@@ -34,22 +36,29 @@ class GBGym(Env):
         gb = self.gameboy
         match action:
             case 0:
-                gb.send_input(pb.WindowEvent.PRESS_ARROW_UP)
-                gb.tick()
-                gb.send_input(pb.WindowEvent.RELEASE_ARROW_UP)
+                for _ in range(0, 8):
+                    gb.tick()
             case 1:
                 gb.send_input(pb.WindowEvent.PRESS_ARROW_DOWN)
-                gb.tick()
+
+                for _ in range(7):
+                    gb.tick()
+
                 gb.send_input(pb.WindowEvent.RELEASE_ARROW_DOWN)
                 gb.tick()
             case 2:
                 gb.send_input(pb.WindowEvent.PRESS_ARROW_LEFT)
-                gb.tick()
+                for _ in range(7):
+                    gb.tick()
+
                 gb.send_input(pb.WindowEvent.RELEASE_ARROW_LEFT)
                 gb.tick()
             case 3:
                 gb.send_input(pb.WindowEvent.PRESS_ARROW_RIGHT)
-                gb.tick()
+
+                for _ in range(7):
+                    gb.tick()
+
                 gb.send_input(pb.WindowEvent.RELEASE_ARROW_RIGHT)
                 gb.tick()
             case 4:
@@ -57,9 +66,31 @@ class GBGym(Env):
                 gb.tick()
                 gb.send_input(pb.WindowEvent.RELEASE_BUTTON_A)
                 gb.tick()
+
+                for _ in range(3):
+                    gb.tick()
+                    gb.tick()
+
             case 5:
+                for _ in range(2):
+                    gb.send_input(pb.WindowEvent.PRESS_BUTTON_A)
+                    gb.tick()
+                    gb.send_input(pb.WindowEvent.RELEASE_BUTTON_A)
+                    gb.tick()
+
+                for _ in range(2):
+                    gb.tick()
+                    gb.tick()
+            case 6:
+                for _ in range(3):
+                    gb.send_input(pb.WindowEvent.PRESS_BUTTON_A)
+                    gb.tick()
+                    gb.send_input(pb.WindowEvent.RELEASE_BUTTON_A)
+                    gb.tick()
+
                 gb.tick()
                 gb.tick()
+
             case _:
                 pass
 
@@ -73,12 +104,11 @@ class GBGym(Env):
         # chop out all the details other than the board...
         cropped_screen = self.sm.screen().screen_ndarray()
 
-        observation = torch.from_numpy(
-            np.reshape(
-                cropped_screen,
-                newshape=(3, cropped_screen.shape[0], cropped_screen.shape[1]),
-            )
+        reshaped = np.reshape(
+            cropped_screen,
+            newshape=(3, cropped_screen.shape[0], cropped_screen.shape[1]),
         )
+        observation = torch.tensor(reshaped, device=self.device, dtype=torch.float32)
 
         truncated = False
         terminated = self.is_game_over()
@@ -106,14 +136,17 @@ class GBGym(Env):
         f.close()
         cropped_screen = self.sm.screen().screen_ndarray()
 
-        state = torch.from_numpy(
+        state = torch.tensor(
             np.reshape(
                 cropped_screen,
                 newshape=(3, cropped_screen.shape[0], cropped_screen.shape[1]),
-            )
+            ),
+            device=self.device,
+            dtype=torch.float32,
         )
 
         return (state, info)
+
 
 # move can be any value from 0 up to and including 13.
 # the move is a binary buffer composed of two pieces of information...
@@ -163,7 +196,7 @@ def main():
 def start_gameboy():
     gb = pb.PyBoy("tetris_dx.sgb")
 
-    gb.set_emulation_speed(target_speed=1)
+    gb.set_emulation_speed(target_speed=0)
 
     f = open("start2.state", "rb")
     gb.load_state(f)
