@@ -65,9 +65,10 @@ class TetrisNN(nn.Module):
         self.conv3 = nn.Conv2d(128, 64, 5)
         self.conv4 = nn.Conv2d(64, 32, 3)
         self.conv5 = nn.Conv2d(32, 8, 3)
-        self.fc1 = nn.Linear(32, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, n_actions)
+        self.fc1 = nn.Linear(32, 32)
+        self.fc2 = nn.Linear(32, 32)
+        self.fc3 = nn.Linear(32, 32)
+        self.fc4 = nn.Linear(32, n_actions)
 
     def forward(self, x):
         x = self.pool(F.relu(self.conv1(x)))
@@ -78,7 +79,8 @@ class TetrisNN(nn.Module):
         x = torch.flatten(x, 1)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
-        x = self.fc3(x)
+        x = F.relu(self.fc3(x))
+        x = self.fc4(x)
         return x
 
 
