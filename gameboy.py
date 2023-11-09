@@ -11,9 +11,9 @@ import pyboy as pb
 
 # local imports
 from score import read_score
+from state import parse_empty_blocks
 
 FPS = 60
-
 
 class GBGym(Env):
     def __init__(self, device):
@@ -177,26 +177,34 @@ def main():
         game_over_screen = np.load("game_over.npy")
         old_game_score = 0
 
+        screen = sm.screen().screen_ndarray()
+        screen_state = parse_empty_blocks(screen)
+
         while not gb.tick():
             wait_n_seconds(gb, 2)
             screen = sm.screen().screen_ndarray()
 
-            # if old_game_score != game_score:
-            #     print(game_score)
-            #     old_game_score = game_score
+            relevant_bits = screen[21 : 68 + 1, 29 : 84 + 1]
+            is_game_over = np.all(relevant_bits == game_over_screen)
 
-            screen = sm.screen().screen_ndarray()[21 : 68 + 1, 29 : 84 + 1]
-            is_game_over = np.all(screen == game_over_screen)
+            new_screen_state = parse_empty_blocks(screen)
+            if not np.all(screen_state == new_screen_state):
+                print(new_screen_state)
+                screen_state = new_screen_state
 
             if is_game_over:
                 print("GAME IS OVER :(")
-                input()
+
+        # screen = sm.screen().screen_ndarray()
+
+        # fig = px.imshow(cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY), color_continuous_scale='gray')
+        # fig.show()
 
 
 def start_gameboy():
     gb = pb.PyBoy("tetris_dx.sgb")
 
-    gb.set_emulation_speed(target_speed=0)
+    gb.set_emulation_speed(target_speed=1)
 
     f = open("start2.state", "rb")
     gb.load_state(f)
