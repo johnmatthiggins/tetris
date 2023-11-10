@@ -1,4 +1,5 @@
 import numpy as np
+
 def _create_J_piece():
     j_matrix = np.zeros(shape=(5, 5))
 
@@ -10,11 +11,13 @@ def _create_J_piece():
 
     return j_matrix
 
+
 def _create_L_piece():
     l_matrix = np.flip(_create_J_piece(), axis=1)
 
     return l_matrix
-    
+
+
 def _create_square():
     square = np.zeros(shape=(5, 5))
     square[2, 1] = 1
@@ -24,8 +27,10 @@ def _create_square():
 
     return square
 
+
 def _create_I_piece():
     pass
+
 
 def _create_T_piece():
     tpiece = np.zeros(shape=(5, 5))
@@ -37,7 +42,10 @@ def _create_T_piece():
 
     return tpiece
 
+
 def _create_S_piece():
     pass
 
+
 def _create_Z_piece():
+    pass

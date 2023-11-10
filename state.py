@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 
+
 def parse_empty_blocks(rgb_screen):
     bw_screen = cv2.cvtColor(rgb_screen, cv2.COLOR_BGR2GRAY)
     state = np.zeros(10)
@@ -18,6 +19,7 @@ def parse_empty_blocks(rgb_screen):
                 found_empty = True
 
     return state
+
 
 def build_block_map(rgb_screen):
     bw_screen = cv2.cvtColor(rgb_screen, cv2.COLOR_BGR2GRAY)

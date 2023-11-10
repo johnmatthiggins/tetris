@@ -18,6 +18,7 @@ from state import build_block_map
 
 FPS = 60
 
+
 class GBGym(Env):
     def __init__(self, device, disable_screen):
         self.device = device
@@ -106,7 +107,10 @@ class GBGym(Env):
         # get numpy array that represents pixels...
         # chop out all the details other than the board...
         block_map = build_block_map(self.sm.screen().screen_ndarray())
-        observation = torch.tensor([block_map], device=self.device, dtype=torch.float32)
+
+        piece_state = _get_piece_state(self.gameboy).to_vector()
+        observation = np.concatenate([[piece_state], block_map])
+        observation = torch.tensor([observation], device=self.device, dtype=torch.float32)
 
         truncated = False
         terminated = self.is_game_over()
@@ -124,9 +128,11 @@ class GBGym(Env):
         seg3 = screen[0, 64]
         red_value = np.array([0, 0, 248])
 
-        return np.all(seg1 == red_value)\
-                or np.all(seg2 == red_value)\
-                or np.all(seg3 == red_value)
+        return (
+            np.all(seg1 == red_value)
+            or np.all(seg2 == red_value)
+            or np.all(seg3 == red_value)
+        )
 
     def close(self):
         self.gameboy.stop()
@@ -140,7 +146,9 @@ class GBGym(Env):
         f.close()
         block_map = build_block_map(self.sm.screen().screen_ndarray())
 
-        state = torch.tensor([block_map], device=self.device, dtype=torch.float32)
+        piece_state = _get_piece_state(self.gameboy).to_vector()
+        state = np.concatenate([[piece_state], block_map])
+        state = torch.tensor([state], device=self.device, dtype=torch.float32)
 
         return (state, info)
 
@@ -155,18 +163,21 @@ class PieceState:
     rotation_position: int
 
     def to_vector(self):
-        return np.array([
-            self.x,
-            self.y,
-            self.next_piece,
-            self.previous_piece,
-            self.current_piece,
-            self.rotation_position,
-            0,
-            0,
-            0,
-            0,
-            ])
+        return np.array(
+            [
+                self.x,
+                self.y,
+                self.next_piece,
+                self.previous_piece,
+                self.current_piece,
+                self.rotation_position,
+                0,
+                0,
+                0,
+                0,
+            ]
+        )
+
 
 # returns vector composed of numbers representing
 # [x_position, y_position, rotation_state, previous_piece, current_piece, next_piece]
@@ -187,7 +198,9 @@ def _get_piece_state(gb):
     current_piece = gb.get_memory_value(CURRENT_PIECE_ADDR)
     previous_piece = gb.get_memory_value(PREVIOUS_PIECE_ADDR)
 
-    return PieceState(x, y, next_piece, current_piece, previous_piece, rotation_position)
+    return PieceState(
+        x, y, next_piece, current_piece, previous_piece, rotation_position
+    )
 
 
 # move can be any value from 0 up to and including 13.
@@ -234,10 +247,12 @@ def main():
             seg4 = screen[0, 64]
             red_value = np.array([0, 0, 248])
 
-            is_game_over = np.all(seg3 == red_value)\
-                    or np.all(seg2 == red_value)\
-                    or np.all(seg4 == red_value)\
-                    or np.all(seg1 == red_value)
+            is_game_over = (
+                np.all(seg3 == red_value)
+                or np.all(seg2 == red_value)
+                or np.all(seg4 == red_value)
+                or np.all(seg1 == red_value)
+            )
 
             new_screen_state = parse_empty_blocks(screen)
 

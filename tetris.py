@@ -18,7 +18,7 @@ import torch.nn.functional as F
 
 from gameboy import GBGym
 
-DISABLE_SCREEN = '--no-screen' in sys.argv
+DISABLE_SCREEN = "--no-screen" in sys.argv
 
 # if GPU is to be used
 device = "cpu"
@@ -48,9 +48,10 @@ torch.device(device)
 
 Transition = namedtuple("Transition", ("state", "action", "next_state", "reward"))
 
+
 class ReplayMemory(object):
     def __init__(self, capacity):
-        print('MEMORY_LENGTH = %d' % capacity)
+        print("MEMORY_LENGTH = %d" % capacity)
         self.memory = deque([], maxlen=capacity)
 
     def push(self, *args):
@@ -78,6 +79,14 @@ class TetrisNN(nn.Module):
         self.fc4 = nn.Linear(32, n_actions)
 
     def forward(self, x):
+        # extract piece state vector
+        piece_state = x[:, 0, 0, :]
+        print(piece_state)
+
+        # slice away piece vector...
+        screen_range = torch.range(start=1, end=x.shape[2] - 1, dtype=torch.long)
+        x = x[:, :, screen_range, :]
+
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
@@ -125,6 +134,7 @@ optimizer = optim.SGD(policy_net.parameters(), lr=LR, momentum=0.9)
 memory = ReplayMemory(MEMORY_SIZE)
 
 steps_done = 0
+
 
 def select_action(state):
     global steps_done
