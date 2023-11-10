@@ -20,11 +20,11 @@ FPS = 60
 
 
 class GBGym(Env):
-    def __init__(self, device, disable_screen):
+    def __init__(self, device, speed=0):
         self.device = device
         self.game_over_screen = np.load("game_over.npy")
 
-        self.gameboy = start_gameboy(0, disable_screen=disable_screen)
+        self.gameboy = start_gameboy(speed)
         self.sm = self.gameboy.botsupport_manager()
 
         # different actions possible...
@@ -227,7 +227,7 @@ def _make_move(gb, move):
 
 
 def main():
-    with start_gameboy() as gb:
+    with start_gameboy(1) as gb:
         sm = gb.botsupport_manager()
         game_over_screen = np.load("game_over.npy")
 
@@ -271,8 +271,8 @@ def main():
         fig.show()
 
 
-def start_gameboy(speed=1, disable_screen=False):
-    gb = pb.PyBoy("tetris_dx.sgb", disable_renderer=disable_screen)
+def start_gameboy(speed=1):
+    gb = pb.PyBoy("tetris_dx.sgb")
 
     gb.set_emulation_speed(target_speed=speed)
 

@@ -18,8 +18,6 @@ import torch.nn.functional as F
 
 from gameboy import GBGym
 
-DISABLE_SCREEN = "--no-screen" in sys.argv
-
 # if GPU is to be used
 device = "cpu"
 
@@ -39,12 +37,6 @@ if torch.backends.mps.is_available():
     device = "mps"
 elif torch.cuda.is_available():
     device = "cuda"
-
-env = GBGym(device, DISABLE_SCREEN)
-
-print('Using "%s" for device' % device)
-
-torch.device(device)
 
 Transition = namedtuple("Transition", ("state", "action", "next_state", "reward"))
 
@@ -78,13 +70,13 @@ class TetrisNN(nn.Module):
         self.fc4 = nn.Linear(32, n_actions)
 
     def forward(self, x):
-        piece_indexes = torch.range(start=0, end=5, dtype=torch.long)
+        piece_indexes = torch.arange(start=0, end=6, dtype=torch.long)
 
         # extract piece state vector
         piece_state = x[:, 0, 0, piece_indexes]
 
         # slice away piece vector...
-        screen_range = torch.range(start=1, end=x.shape[2] - 1, dtype=torch.long)
+        screen_range = torch.arange(start=1, end=x.shape[2], dtype=torch.long)
         x = x[:, :, screen_range, :]
 
         x = F.relu(self.conv1(x))
@@ -120,23 +112,7 @@ MEMORY_LENGTH_SECONDS = 15
 # save the last n seconds
 MEMORY_SIZE = int(MEMORY_LENGTH_SECONDS * 7.5)
 
-# Get number of actions from gym action space
-n_actions = env.action_space.shape[0]
-
-# Get the number of state observations
-state, info = env.reset()
-
-policy_net = TetrisNN(n_actions).to(device)
-target_net = TetrisNN(n_actions).to(device)
-target_net.load_state_dict(policy_net.state_dict())
-
-optimizer = optim.SGD(policy_net.parameters(), lr=LR, momentum=0.9)
-memory = ReplayMemory(MEMORY_SIZE)
-
-steps_done = 0
-
-
-def select_action(state):
+def select_action(policy_net, env, state):
     global steps_done
     sample = random.random()
     eps_threshold = EPS_END + (EPS_START - EPS_END) * math.exp(
@@ -155,11 +131,7 @@ def select_action(state):
             [[np.random.choice(env.action_space)]], device=device, dtype=torch.long
         )
 
-
-episode_durations = list()
-
-
-def plot_durations(show_result=False):
+def plot_durations(episode_durations, show_result=False):
     durations_t = torch.tensor(episode_durations, dtype=torch.float)
     # Take 100 episode averages and plot them too
     if len(durations_t) >= 100:
@@ -177,7 +149,7 @@ def plot_durations(show_result=False):
     fig.show()
 
 
-def optimize_model():
+def optimize_model(policy_net, target_net, memory, optimizer):
     if len(memory) < BATCH_SIZE:
         return
     transitions = memory.sample(BATCH_SIZE)
@@ -228,50 +200,73 @@ def optimize_model():
     optimizer.step()
 
 
-num_episodes = 10
+steps_done = 0
 
-for i_episode in range(num_episodes):
-    # Initialize the environment and get it's state
+def main():
+    episode_durations = list()
+
+    env = GBGym(device, 0)
+    n_actions = env.action_space.shape[0]
+    print('Using "%s" for device' % device)
+
+    torch.device(device)
+
+    # Get the number of state observations
     state, info = env.reset()
-    state = state.unsqueeze(0)
-    print("Starting episode... [%d/%d]" % (i_episode + 1, num_episodes))
 
-    for t in count():
-        action = select_action(state)
-        observation, reward, terminated, truncated = env.step(action.item())
-        reward = torch.tensor([reward], device=device)
-        done = terminated or truncated
+    policy_net = TetrisNN(n_actions).to(device)
+    target_net = TetrisNN(n_actions).to(device)
+    target_net.load_state_dict(policy_net.state_dict())
 
-        if terminated:
-            next_state = None
-        else:
-            next_state = observation.unsqueeze(0)
+    optimizer = optim.SGD(policy_net.parameters(), lr=LR, momentum=0.9)
+    memory = ReplayMemory(MEMORY_SIZE)
 
-        # Store the transition in memory
-        memory.push(state, action, next_state, reward)
+    num_episodes = 10
 
-        # Move to the next state
-        state = next_state
+    for i_episode in range(num_episodes):
+        # Initialize the environment and get it's state
+        state, info = env.reset()
+        state = state.unsqueeze(0)
+        print("Starting episode... [%d/%d]" % (i_episode + 1, num_episodes))
 
-        # Perform one step of the optimization (on the policy network)
-        optimize_model()
+        for t in count():
+            action = select_action(policy_net, env, state)
+            observation, reward, terminated, truncated = env.step(action.item())
+            reward = torch.tensor([reward], device=device)
+            done = terminated or truncated
 
-        # Soft update of the target network's weights
-        # θ′ ← τ θ + (1 −τ )θ′
-        target_net_state_dict = target_net.state_dict()
-        policy_net_state_dict = policy_net.state_dict()
+            if terminated:
+                next_state = None
+            else:
+                next_state = observation.unsqueeze(0)
 
-        for key in policy_net_state_dict:
-            target_net_state_dict[key] = policy_net_state_dict[
-                key
-            ] * TAU + target_net_state_dict[key] * (1 - TAU)
-        target_net.load_state_dict(target_net_state_dict)
+            # Store the transition in memory
+            memory.push(state, action, next_state, reward)
 
-        if done:
-            episode_durations.append(t + 1)
-            break
+            # Move to the next state
+            state = next_state
 
+            # Perform one step of the optimization (on the policy network)
+            optimize_model(policy_net, target_net, memory, optimizer)
 
-torch.save(policy_net.state_dict(), 'model.pt')
+            # Soft update of the target network's weights
+            # θ′ ← τ θ + (1 −τ )θ′
+            target_net_state_dict = target_net.state_dict()
+            policy_net_state_dict = policy_net.state_dict()
 
-plot_durations(show_result=True)
+            for key in policy_net_state_dict:
+                target_net_state_dict[key] = policy_net_state_dict[
+                    key
+                ] * TAU + target_net_state_dict[key] * (1 - TAU)
+            target_net.load_state_dict(target_net_state_dict)
+
+            if done:
+                episode_durations.append(t + 1)
+                break
+
+    torch.save(policy_net.state_dict(), 'model2.pt')
+
+    plot_durations(episode_durations, show_result=True)
+
+if __name__ == '__main__':
+    main()
