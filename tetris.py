@@ -48,7 +48,6 @@ torch.device(device)
 
 Transition = namedtuple("Transition", ("state", "action", "next_state", "reward"))
 
-
 class ReplayMemory(object):
     def __init__(self, capacity):
         print("MEMORY_LENGTH = %d" % capacity)
@@ -229,7 +228,7 @@ def optimize_model():
     optimizer.step()
 
 
-num_episodes = 1000
+num_episodes = 10
 
 for i_episode in range(num_episodes):
     # Initialize the environment and get it's state
@@ -271,5 +270,8 @@ for i_episode in range(num_episodes):
         if done:
             episode_durations.append(t + 1)
             break
+
+
+torch.save(policy_net.state_dict(), 'model.pt')
 
 plot_durations(show_result=True)
