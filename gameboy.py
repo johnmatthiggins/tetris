@@ -15,9 +15,9 @@ import pyboy as pb
 from score import read_score
 from state import parse_empty_blocks
 from state import build_block_map
+from state import find_empty_blocks
 
 FPS = 60
-
 
 class GBGym(Env):
     def __init__(self, device, speed=0):
@@ -100,13 +100,16 @@ class GBGym(Env):
 
         new_score = self.score()
 
-        # reward is how much the score improved...
-        reward = new_score - self.current_score
-        self.current_score = new_score
-
         # get numpy array that represents pixels...
         # chop out all the details other than the board...
         block_map = build_block_map(self.sm.screen().screen_ndarray())
+
+        # If emtpy block score is zero just use 1
+        empty_block_score = torch.sum(find_empty_blocks(block_map)) or 1
+
+        # reward is how much the score improved...
+        reward = new_score / empty_block_score
+        self.current_score = new_score
 
         piece_state = _get_piece_state(self.gameboy).to_vector()
         observation = np.concatenate([[piece_state], block_map])
@@ -152,7 +155,6 @@ class GBGym(Env):
 
         return (state, info)
 
-
 @dataclass
 class PieceState:
     x: int
@@ -178,7 +180,6 @@ class PieceState:
             ]
         )
 
-
 # returns vector composed of numbers representing
 # [x_position, y_position, rotation_state, previous_piece, current_piece, next_piece]
 def _get_piece_state(gb):
@@ -201,30 +202,6 @@ def _get_piece_state(gb):
     return PieceState(
         x, y, next_piece, current_piece, previous_piece, rotation_position
     )
-
-
-# move can be any value from 0 up to and including 13.
-# the move is a binary buffer composed of two pieces of information...
-# the first 2 bits from starting at the least significant bit are
-# reserved for determining the rotational position of the piece.
-# 00 => default position (no rotation)
-# 01 => single rotation
-# 10 => double rotation
-# 11 => triple rotation (one rotation the other way)
-# The next four bits are reserved for the position of the block horizontally.
-# (0000, 1001) <= this doesn't use up the full range of our four bits but that's okay...
-# because we only are using 0 to 13 we only need 14 output nodes on our neural network.
-def _make_move(gb, move):
-    rotations = move & 0x03
-    horizontal_position = (move & ~0x03) >> 2
-
-    for _ in range(rotations):
-        gb.send_input(pb.WindowEvent.PRESS_BUTTON_A)
-        gb.tick()
-        gb.send_input(pb.WindowEvent.RELEASE_BUTTON_A)
-        gb.tick()
-        gb.tick()
-
 
 def main():
     with start_gameboy(1) as gb:
@@ -286,15 +263,6 @@ def start_gameboy(speed=1):
     gb.tick()
 
     return gb
-
-
-def press_start(gb):
-    gb.send_input(pb.WindowEvent.PRESS_BUTTON_START)
-    gb.tick()
-
-    gb.send_input(pb.WindowEvent.RELEASE_BUTTON_START)
-    gb.tick()
-
 
 def seconds_to_frames(seconds):
     return seconds * FPS

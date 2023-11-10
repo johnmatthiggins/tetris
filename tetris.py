@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import time
 from collections import namedtuple, deque
 from itertools import count
 import sys
@@ -18,27 +19,29 @@ import torch.nn.functional as F
 
 from gameboy import GBGym
 
-# if GPU is to be used
-device = "cpu"
-
-if not torch.backends.mps.is_available():
-    if not torch.backends.mps.is_built():
-        print(
-            "MPS not available because the current PyTorch install was not "
-            "built with MPS enabled."
-        )
-    else:
-        print(
-            "MPS not available because the current MacOS version is not 12.3+ "
-            "and/or you do not have an MPS-enabled device on this machine."
-        )
-
-if torch.backends.mps.is_available():
-    device = "mps"
-elif torch.cuda.is_available():
-    device = "cuda"
-
 Transition = namedtuple("Transition", ("state", "action", "next_state", "reward"))
+
+def get_device():
+    if not torch.backends.mps.is_available():
+        if not torch.backends.mps.is_built():
+            print(
+                "MPS not available because the current PyTorch install was not "
+                "built with MPS enabled."
+            )
+        else:
+            print(
+                "MPS not available because the current MacOS version is not 12.3+ "
+                "and/or you do not have an MPS-enabled device on this machine."
+            )
+
+    if torch.backends.mps.is_available():
+        device = "mps"
+    elif torch.cuda.is_available():
+        device = "cuda"
+
+    return device
+
+DEVICE = get_device()
 
 class ReplayMemory(object):
     def __init__(self, capacity):
@@ -128,7 +131,7 @@ def select_action(policy_net, env, state):
             return result.view(1, 1)
     else:
         return torch.tensor(
-            [[np.random.choice(env.action_space)]], device=device, dtype=torch.long
+            [[np.random.choice(env.action_space)]], device=DEVICE, dtype=torch.long
         )
 
 def plot_durations(episode_durations, show_result=False):
@@ -162,7 +165,7 @@ def optimize_model(policy_net, target_net, memory, optimizer):
     # (a final state would've been the one after which simulation ended)
     non_final_mask = torch.tensor(
         tuple(map(lambda s: s is not None, batch.next_state)),
-        device=device,
+        device=DEVICE,
         dtype=torch.bool,
     )
     non_final_next_states = torch.cat([s for s in batch.next_state if s is not None])
@@ -180,7 +183,7 @@ def optimize_model(policy_net, target_net, memory, optimizer):
     # on the "older" target_net; selecting their best reward with max(1)[0].
     # This is merged based on the mask, such that we'll have either the expected
     # state value or 0 in case the state was final.
-    next_state_values = torch.zeros(BATCH_SIZE, device=device)
+    next_state_values = torch.zeros(BATCH_SIZE, device=DEVICE)
     with torch.no_grad():
         next_state_values[non_final_mask] = target_net(non_final_next_states).max(1)[0]
 
@@ -205,25 +208,26 @@ steps_done = 0
 def main():
     episode_durations = list()
 
-    env = GBGym(device, 0)
+    env = GBGym(DEVICE, 0)
     n_actions = env.action_space.shape[0]
-    print('Using "%s" for device' % device)
 
-    torch.device(device)
+    torch.device(DEVICE)
 
     # Get the number of state observations
     state, info = env.reset()
 
-    policy_net = TetrisNN(n_actions).to(device)
-    target_net = TetrisNN(n_actions).to(device)
+    policy_net = TetrisNN(n_actions).to(DEVICE)
+    target_net = TetrisNN(n_actions).to(DEVICE)
     target_net.load_state_dict(policy_net.state_dict())
 
     optimizer = optim.SGD(policy_net.parameters(), lr=LR, momentum=0.9)
     memory = ReplayMemory(MEMORY_SIZE)
 
-    num_episodes = 10
+    num_episodes = 1000
 
     for i_episode in range(num_episodes):
+        start = time.time()
+
         # Initialize the environment and get it's state
         state, info = env.reset()
         state = state.unsqueeze(0)
@@ -232,7 +236,7 @@ def main():
         for t in count():
             action = select_action(policy_net, env, state)
             observation, reward, terminated, truncated = env.step(action.item())
-            reward = torch.tensor([reward], device=device)
+            reward = torch.tensor([reward], device=DEVICE)
             done = terminated or truncated
 
             if terminated:
@@ -263,8 +267,11 @@ def main():
             if done:
                 episode_durations.append(t + 1)
                 break
+        end = time.time()
+        duration_s = end - start
+        print('Episode took %s seconds...' % str(duration_s))
 
-    torch.save(policy_net.state_dict(), 'model2.pt')
+    torch.save(policy_net.state_dict(), 'model.pt')
 
     plot_durations(episode_durations, show_result=True)
 
