@@ -19,11 +19,11 @@ from state import build_block_map
 FPS = 60
 
 class GBGym(Env):
-    def __init__(self, device):
+    def __init__(self, device, disable_screen):
         self.device = device
         self.game_over_screen = np.load("game_over.npy")
 
-        self.gameboy = start_gameboy(0)
+        self.gameboy = start_gameboy(0, disable_screen=disable_screen)
         self.sm = self.gameboy.botsupport_manager()
 
         # different actions possible...
@@ -101,18 +101,12 @@ class GBGym(Env):
 
         # reward is how much the score improved...
         reward = new_score - self.current_score
-        print('COLLECTED REWARD OF %d POINTS' % reward)
         self.current_score = new_score
 
         # get numpy array that represents pixels...
         # chop out all the details other than the board...
-        cropped_screen = cv2.cvtColor(self.sm.screen().screen_ndarray(), cv2.COLOR_BGR2GRAY)
-
-        reshaped = np.reshape(
-            cropped_screen,
-            newshape=(1, cropped_screen.shape[0], cropped_screen.shape[1]),
-        )
-        observation = torch.tensor(reshaped, device=self.device, dtype=torch.float32)
+        block_map = build_block_map(self.sm.screen().screen_ndarray())
+        observation = torch.tensor([block_map], device=self.device, dtype=torch.float32)
 
         truncated = False
         terminated = self.is_game_over()
@@ -144,16 +138,9 @@ class GBGym(Env):
         f = open("start2.state", "rb")
         self.gameboy.load_state(f)
         f.close()
-        cropped_screen = cv2.cvtColor(self.sm.screen().screen_ndarray(), cv2.COLOR_BGR2GRAY)
+        block_map = build_block_map(self.sm.screen().screen_ndarray())
 
-        state = torch.tensor(
-            np.reshape(
-                cropped_screen,
-                newshape=(1, cropped_screen.shape[0], cropped_screen.shape[1]),
-            ),
-            device=self.device,
-            dtype=torch.float32,
-        )
+        state = torch.tensor([block_map], device=self.device, dtype=torch.float32)
 
         return (state, info)
 
@@ -166,6 +153,20 @@ class PieceState:
     current_piece: int
     previous_piece: int
     rotation_position: int
+
+    def to_vector(self):
+        return np.array([
+            self.x,
+            self.y,
+            self.next_piece,
+            self.previous_piece,
+            self.current_piece,
+            self.rotation_position,
+            0,
+            0,
+            0,
+            0,
+            ])
 
 # returns vector composed of numbers representing
 # [x_position, y_position, rotation_state, previous_piece, current_piece, next_piece]
@@ -255,8 +256,8 @@ def main():
         fig.show()
 
 
-def start_gameboy(speed=1):
-    gb = pb.PyBoy("tetris_dx.sgb")
+def start_gameboy(speed=1, disable_screen=False):
+    gb = pb.PyBoy("tetris_dx.sgb", disable_renderer=disable_screen)
 
     gb.set_emulation_speed(target_speed=speed)
 

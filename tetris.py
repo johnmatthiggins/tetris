@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
+from collections import namedtuple, deque
+from itertools import count
+import sys
+import math
+import random
+
 import plotly.express as px
 import numpy as np
 import pandas as pd
 
 import gymnasium as gym
-import math
-import random
-from collections import namedtuple, deque
-from itertools import count
 
 import torch
 import torch.nn as nn
@@ -15,6 +17,8 @@ import torch.optim as optim
 import torch.nn.functional as F
 
 from gameboy import GBGym
+
+DISABLE_SCREEN = '--no-screen' in sys.argv
 
 # if GPU is to be used
 device = "cpu"
@@ -36,7 +40,7 @@ if torch.backends.mps.is_available():
 elif torch.cuda.is_available():
     device = "cuda"
 
-env = GBGym(device)
+env = GBGym(device, DISABLE_SCREEN)
 
 print('Using "%s" for device' % device)
 
@@ -63,23 +67,22 @@ class ReplayMemory(object):
 class TetrisNN(nn.Module):
     def __init__(self, n_actions):
         super().__init__()
-        self.conv1 = nn.Conv2d(1, 32, 5)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(32, 128, 5)
-        self.conv3 = nn.Conv2d(128, 64, 5)
+        self.conv1 = nn.Conv2d(1, 32, 3)
+        self.conv2 = nn.Conv2d(32, 128, 3)
+        self.conv3 = nn.Conv2d(128, 64, 3)
         self.conv4 = nn.Conv2d(64, 32, 3)
-        self.conv5 = nn.Conv2d(32, 8, 3)
-        self.fc1 = nn.Linear(336, 32)
+        self.conv5 = nn.Conv2d(32, 8, 2)
+        self.fc1 = nn.Linear(72, 32)
         self.fc2 = nn.Linear(32, 32)
         self.fc3 = nn.Linear(32, 32)
         self.fc4 = nn.Linear(32, n_actions)
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = self.pool(F.relu(self.conv3(x)))
-        x = self.pool(F.relu(self.conv4(x)))
-        x = self.pool(F.relu(self.conv5(x)))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
+        x = F.relu(self.conv4(x))
+        x = F.relu(self.conv5(x))
         x = torch.flatten(x, 1)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
@@ -95,7 +98,7 @@ class TetrisNN(nn.Module):
 # EPS_DECAY controls the rate of exponential decay of epsilon, higher means a slower decay
 # TAU is the update rate of the target network
 # LR is the learning rate of the ``SGD`` optimizer
-BATCH_SIZE = 10
+BATCH_SIZE = 100
 GAMMA = 0.99
 EPS_START = 0.9
 EPS_END = 0.9
@@ -122,7 +125,6 @@ optimizer = optim.SGD(policy_net.parameters(), lr=LR, momentum=0.9)
 memory = ReplayMemory(MEMORY_SIZE)
 
 steps_done = 0
-
 
 def select_action(state):
     global steps_done
