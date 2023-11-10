@@ -73,15 +73,16 @@ class TetrisNN(nn.Module):
         self.conv3 = nn.Conv2d(128, 64, 3)
         self.conv4 = nn.Conv2d(64, 32, 3)
         self.conv5 = nn.Conv2d(32, 8, 2)
-        self.fc1 = nn.Linear(72, 32)
+        self.fc1 = nn.Linear(78, 32)
         self.fc2 = nn.Linear(32, 32)
         self.fc3 = nn.Linear(32, 32)
         self.fc4 = nn.Linear(32, n_actions)
 
     def forward(self, x):
+        piece_indexes = torch.range(start=0, end=5, dtype=torch.long)
+
         # extract piece state vector
-        piece_state = x[:, 0, 0, :]
-        print(piece_state)
+        piece_state = x[:, 0, 0, piece_indexes]
 
         # slice away piece vector...
         screen_range = torch.range(start=1, end=x.shape[2] - 1, dtype=torch.long)
@@ -92,7 +93,7 @@ class TetrisNN(nn.Module):
         x = F.relu(self.conv3(x))
         x = F.relu(self.conv4(x))
         x = F.relu(self.conv5(x))
-        x = torch.flatten(x, 1)
+        x = torch.cat([torch.flatten(x, 1), piece_state], dim=1)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
