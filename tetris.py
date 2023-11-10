@@ -103,7 +103,7 @@ EPS_DECAY = 1000000
 TAU = 0.005
 LR = 1e-3
 
-MEMORY_LENGTH_SECONDS = 5
+MEMORY_LENGTH_SECONDS = 15
 
 # save the last n seconds
 MEMORY_SIZE = int(MEMORY_LENGTH_SECONDS * 7.5)
@@ -118,7 +118,7 @@ policy_net = TetrisNN(n_actions).to(device)
 target_net = TetrisNN(n_actions).to(device)
 target_net.load_state_dict(policy_net.state_dict())
 
-optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
+optimizer = optim.SGD(policy_net.parameters(), lr=LR, momentum=0.9)
 memory = ReplayMemory(MEMORY_SIZE)
 
 steps_done = 0
@@ -216,10 +216,7 @@ def optimize_model():
     optimizer.step()
 
 
-if torch.cuda.is_available():
-    num_episodes = 600
-else:
-    num_episodes = 1000
+num_episodes = 1000
 
 for i_episode in range(num_episodes):
     # Initialize the environment and get it's state
@@ -260,7 +257,6 @@ for i_episode in range(num_episodes):
 
         if done:
             episode_durations.append(t + 1)
-            # plot_durations()
             break
 
 plot_durations(show_result=True)

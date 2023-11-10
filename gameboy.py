@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from dataclasses import dataclass
+
 import pyboy as pb
 from gymnasium import Env
 
@@ -12,6 +14,7 @@ import pyboy as pb
 # local imports
 from score import read_score
 from state import parse_empty_blocks
+from state import build_block_map
 
 FPS = 60
 
@@ -20,7 +23,7 @@ class GBGym(Env):
         self.device = device
         self.game_over_screen = np.load("game_over.npy")
 
-        self.gameboy = start_gameboy()
+        self.gameboy = start_gameboy(0)
         self.sm = self.gameboy.botsupport_manager()
 
         # different actions possible...
@@ -98,6 +101,7 @@ class GBGym(Env):
 
         # reward is how much the score improved...
         reward = new_score - self.current_score
+        print('COLLECTED REWARD OF %d POINTS' % reward)
         self.current_score = new_score
 
         # get numpy array that represents pixels...
@@ -120,9 +124,15 @@ class GBGym(Env):
         return (observation, reward, terminated, truncated)
 
     def is_game_over(self):
-        rgb_screen = self.sm.screen().screen_ndarray()
-        relevant_part = rgb_screen[21 : 68 + 1, 29 : 84 + 1]
-        return np.all(relevant_part == self.game_over_screen)
+        screen = self.sm.screen().screen_ndarray()
+        seg1 = screen[0, 16]
+        seg2 = screen[0, 32]
+        seg3 = screen[0, 64]
+        red_value = np.array([0, 0, 248])
+
+        return np.all(seg1 == red_value)\
+                or np.all(seg2 == red_value)\
+                or np.all(seg3 == red_value)
 
     def close(self):
         self.gameboy.stop()
@@ -146,6 +156,37 @@ class GBGym(Env):
         )
 
         return (state, info)
+
+
+@dataclass
+class PieceState:
+    x: int
+    y: int
+    next_piece: int
+    current_piece: int
+    previous_piece: int
+    rotation_position: int
+
+# returns vector composed of numbers representing
+# [x_position, y_position, rotation_state, previous_piece, current_piece, next_piece]
+def _get_piece_state(gb):
+    PIECE_POSITION_X_ADDR = 0xAF80
+    PIECE_POSITION_Y_ADDR = 0xAF81
+
+    PIECE_ROTATION_POSITION_ADDR = 0xAF82
+    NEXT_PIECE_ADDR = 0xAF84
+    CURRENT_PIECE_ADDR = 0xAF85
+    PREVIOUS_PIECE_ADDR = 0xAFB0
+
+    x = gb.get_memory_value(PIECE_POSITION_X_ADDR)
+    y = gb.get_memory_value(PIECE_POSITION_Y_ADDR)
+
+    rotation_position = gb.get_memory_value(PIECE_ROTATION_POSITION_ADDR)
+    next_piece = gb.get_memory_value(NEXT_PIECE_ADDR)
+    current_piece = gb.get_memory_value(CURRENT_PIECE_ADDR)
+    previous_piece = gb.get_memory_value(PREVIOUS_PIECE_ADDR)
+
+    return PieceState(x, y, next_piece, current_piece, previous_piece, rotation_position)
 
 
 # move can be any value from 0 up to and including 13.
@@ -175,36 +216,49 @@ def main():
     with start_gameboy() as gb:
         sm = gb.botsupport_manager()
         game_over_screen = np.load("game_over.npy")
+
+        piece_state = _get_piece_state(gb)
         old_game_score = 0
 
         screen = sm.screen().screen_ndarray()
         screen_state = parse_empty_blocks(screen)
+        wait_n_seconds(gb, 2)
 
         while not gb.tick():
-            wait_n_seconds(gb, 2)
             screen = sm.screen().screen_ndarray()
 
-            relevant_bits = screen[21 : 68 + 1, 29 : 84 + 1]
-            is_game_over = np.all(relevant_bits == game_over_screen)
+            seg1 = screen[0, 16]
+            seg2 = screen[0, 32]
+            seg3 = screen[0, 64]
+            seg4 = screen[0, 64]
+            red_value = np.array([0, 0, 248])
+
+            is_game_over = np.all(seg3 == red_value)\
+                    or np.all(seg2 == red_value)\
+                    or np.all(seg4 == red_value)\
+                    or np.all(seg1 == red_value)
 
             new_screen_state = parse_empty_blocks(screen)
+
             if not np.all(screen_state == new_screen_state):
-                print(new_screen_state)
                 screen_state = new_screen_state
+
+            new_piece_state = _get_piece_state(gb)
+            if new_piece_state != piece_state:
+                piece_state = new_piece_state
 
             if is_game_over:
                 print("GAME IS OVER :(")
+                break
 
-        # screen = sm.screen().screen_ndarray()
-
-        # fig = px.imshow(cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY), color_continuous_scale='gray')
-        # fig.show()
+        fig = px.imshow(build_block_map(screen))
+        fig.show()
 
 
-def start_gameboy():
+def start_gameboy(speed=1):
     gb = pb.PyBoy("tetris_dx.sgb")
 
-    gb.set_emulation_speed(target_speed=1)
+    gb.set_emulation_speed(target_speed=speed)
 
     f = open("start2.state", "rb")
     gb.load_state(f)
