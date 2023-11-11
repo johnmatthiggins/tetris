@@ -28,7 +28,7 @@ elif torch.cuda.is_available():
 torch.device(device)
 
 def main():
-    gb = GBGym(device, 1)
+    gb = GBGym(device=device, speed=1)
     model = TetrisNN(len(gb.action_space)).to(device)
 
     # load weights...

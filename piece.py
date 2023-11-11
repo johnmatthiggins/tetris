@@ -16,10 +16,9 @@ def erase_piece(block_map, rotation, piece, position):
         # Z block
         case 2:
             _erase_Z_block(block_map, x, y, rotation)
-            pass
         # S block
         case 3:
-            pass
+            _erase_S_block(block_map, x, y, rotation)
         # J block
         case 4:
             _erase_J_block(block_map, x, y, rotation)
@@ -51,11 +50,14 @@ def _erase_I_block(block_map, x, y, rotation):
                 block_map[y, x + 1] = 0
                 block_map[y, x + 2] = 0
             else:
-                y += 1
-                block_map[y, x]     = 0
-                block_map[y, x - 1] = 0
-                block_map[y, x + 1] = 0
-                block_map[y, x + 2] = 0
+                # check if it's going to be touching the bottom,
+                # if it is, ignore it because it won't effect reward calculation.
+                if y < 17:
+                    y += 1
+                    block_map[y, x]     = 0
+                    block_map[y, x - 1] = 0
+                    block_map[y, x + 1] = 0
+                    block_map[y, x + 2] = 0
         case 1 | 3:
             if rotation == 3:
                 x += 1
@@ -112,13 +114,37 @@ def _erase_Z_block(block_map, x, y, rotation):
             block_map[y, x + 1]     = 0
             block_map[y + 1, x + 1] = 0
 
-def _erase_J_block(block_map, x, y, rotation):
+def _erase_S_block(block_map, x, y, rotation):
     match rotation:
         case 0:
             block_map[y, x] = 0
-            block_map[y, x - 1] = 0
             block_map[y, x + 1] = 0
+            block_map[y - 1, x] = 0
+            block_map[y - 1, x - 1] = 0
+        case 1:
+            block_map[y, x] = 0
+            block_map[y + 1, x] = 0
+            block_map[y, x - 1] = 0
+            block_map[y - 1, x - 1] = 0
+        case 2:
+            y += 1
+            block_map[y, x] = 0
+            block_map[y, x + 1] = 0
+            block_map[y - 1, x] = 0
+            block_map[y - 1, x - 1] = 0
+        case 3:
+            block_map[y - 1, x]     = 0
+            block_map[y, x]         = 0
+            block_map[y, x + 1]     = 0
             block_map[y + 1, x + 1] = 0
+
+def _erase_J_block(block_map, x, y, rotation):
+    match rotation:
+        case 0:
+            block_map[y - 1, x] = 0
+            block_map[y - 1, x - 1] = 0
+            block_map[y - 1, x + 1] = 0
+            block_map[y, x + 1] = 0
         case 1:
             block_map[y + 1, x] = 0
             block_map[y, x] = 0
