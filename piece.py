@@ -24,7 +24,7 @@ def erase_piece(block_map, rotation, piece, position):
             _erase_J_block(block_map, x, y, rotation)
         # L block
         case 5:
-            pass
+            _erase_L_block(block_map, x, y, rotation)
         # Square block
         case 6:
             _erase_square_block(block_map, x, y)
@@ -106,6 +106,29 @@ def _erase_J_block(block_map, x, y, rotation):
             block_map[y - 1, x] = 0
             block_map[y, x] = 0
             block_map[y + 1, x] = 0
+
+def _erase_L_block(block_map, x, y, rotation):
+    match rotation:
+        case 0:
+            block_map[y, x] = 0
+            block_map[y, x - 1] = 0
+            block_map[y, x + 1] = 0
+            block_map[y + 1, x - 1] = 0
+        case 1:
+            block_map[y + 1, x] = 0
+            block_map[y, x] = 0
+            block_map[y - 1, x] = 0
+            block_map[y - 1, x - 1] = 0
+        case 2:
+            block_map[y, x - 1] = 0
+            block_map[y, x] = 0
+            block_map[y, x + 1] = 0
+            block_map[y - 1, x + 1] = 0
+        case 3:
+            block_map[y - 1, x] = 0
+            block_map[y, x] = 0
+            block_map[y + 1, x] = 0
+            block_map[y + 1, x + 1] = 0
 
 def _create_J_piece():
     j_matrix = np.zeros(shape=(5, 5))
