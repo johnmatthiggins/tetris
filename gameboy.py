@@ -118,15 +118,15 @@ class GBGym(Env):
         # chop out all the details other than the board...
         block_map = build_block_map(self.sm.screen().screen_ndarray())
 
+        piece_state = _get_piece_state(self.gameboy)
+        piece_vector = piece_state.to_vector()
+
         # If emtpy block score is zero just use 1
-        empty_block_score = torch.sum(find_empty_blocks(block_map)) or 1
+        empty_block_score = torch.sum(find_empty_blocks(block_map, piece_state)) or 1
 
         # reward is how much the score improved...
         reward = new_score / empty_block_score
         self.current_score = new_score
-
-        piece_state = _get_piece_state(self.gameboy)
-        piece_vector = piece_state.to_vector()
 
         if self.live_feed:
             if self.ticks % 5 == 0:
