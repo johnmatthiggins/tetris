@@ -9,7 +9,7 @@ def erase_piece(block_map, rotation, piece, position):
     match piece:
         # I block
         case 0:
-            pass
+            _erase_I_block(block_map, x, y, rotation)
         # T block
         case 1:
             _erase_T_block(block_map, x, y, rotation)
@@ -38,31 +38,63 @@ def _erase_square_block(block_map, x, y):
     block_map[y + 1] = 0
 
 def _erase_I_block(block_map, x, y, rotation):
-    pass
+    match rotation:
+        case 0 | 2:
+            if block_map[y, x] == 1:
+                block_map[y, x]     = 0
+                block_map[y, x - 1] = 0
+                block_map[y, x + 1] = 0
+                block_map[y, x + 2] = 0
+            else:
+                y += 1
+                block_map[y, x]     = 0
+                block_map[y, x - 1] = 0
+                block_map[y, x + 1] = 0
+                block_map[y, x + 2] = 0
+        case 1 | 3:
+            if rotation == 3:
+                x += 1
+
+            if y != 0:
+                block_map[y - 1, x] = 0
+            block_map[y, x] = 0
+            block_map[y + 1, x] = 0
+            block_map[y + 2, x] = 0
+        # case 2:
+        #     block_map[y - 1, x]     = 0
+        #     block_map[y - 1, x - 1] = 0
+        #     block_map[y - 1, x + 1] = 0
+        #     block_map[y - 1, x + 2] = 0
+        # case 3:
+        #     pass
+            # block_map[y, x]     = 0
+            # block_map[y - 1, x] = 0
+            # block_map[y + 1, x] = 0
+            # block_map[y, x + 1] = 0
+
 
 def _erase_T_block(block_map, x, y, rotation):
     match rotation:
         case 0:
-            block_map[y, x] = 0
+            block_map[y, x]     = 0
             block_map[y, x + 1] = 0
             block_map[y + 1, x] = 0
             block_map[y, x - 1] = 0
         case 1:
-            block_map[y, x] = 0
+            block_map[y, x]     = 0
             block_map[y - 1, x] = 0
             block_map[y + 1, x] = 0
             block_map[y, x - 1] = 0
         case 2:
-            block_map[y, x] = 0
+            block_map[y, x]     = 0
             block_map[y, x + 1] = 0
             block_map[y - 1, x] = 0
             block_map[y, x - 1] = 0
         case 3:
-            block_map[y, x] = 0
+            block_map[y, x]     = 0
             block_map[y - 1, x] = 0
             block_map[y + 1, x] = 0
             block_map[y, x + 1] = 0
-
 
 def _create_J_piece():
     j_matrix = np.zeros(shape=(5, 5))
