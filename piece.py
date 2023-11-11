@@ -38,6 +38,10 @@ def _erase_square_block(block_map, x, y):
     block_map[y + 1] = 0
 
 def _erase_I_block(block_map, x, y, rotation):
+    # already touching the bottom so it doesn't need to be removed...
+    if y == 18:
+        return
+
     match rotation:
         case 0 | 2:
             if block_map[y, x] == 1:

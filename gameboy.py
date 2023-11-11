@@ -21,8 +21,6 @@ from state import find_empty_blocks
 
 from piece import erase_piece
 
-FPS = 60
-
 class GBGym(Env):
     def __init__(self, *, device='cpu', speed=0, live_feed=False):
         self.live_feed = live_feed
@@ -129,7 +127,7 @@ class GBGym(Env):
         self.current_score = new_score
 
         if self.live_feed:
-            if self.ticks % 5 == 0:
+            if self.ticks % 2 == 0:
                 erased_floating_piece = erase_piece(
                         block_map=np.copy(block_map),
                         rotation=piece_state.rotation_position,
@@ -150,6 +148,7 @@ class GBGym(Env):
         # added extra
         return (observation, reward, terminated, truncated)
 
+    # kinda janky but it hasn't failed me yet...
     def is_game_over(self):
         screen = self.sm.screen().screen_ndarray()
         seg1 = screen[0, 16]
