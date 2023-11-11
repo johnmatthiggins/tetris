@@ -103,12 +103,12 @@ class TetrisNN(nn.Module):
 # TAU is the update rate of the target network
 # LR is the learning rate of the ``SGD`` optimizer
 BATCH_SIZE = 100
-GAMMA = 0.99
+GAMMA = 0.0
 EPS_START = 0.9
-EPS_END = 0.9
-EPS_DECAY = 1000000
+EPS_END = 0.05
+EPS_DECAY = 1000
 TAU = 0.005
-LR = 1e-3
+LR = 1e-4
 
 MEMORY_LENGTH_SECONDS = 15
 
@@ -206,9 +206,11 @@ def optimize_model(policy_net, target_net, memory, optimizer):
 steps_done = 0
 
 def main():
+    live_feed = '--live-feed' in sys.argv
+
     episode_durations = list()
 
-    env = GBGym(DEVICE, 0)
+    env = GBGym(device=DEVICE, speed=0, live_feed=live_feed)
     n_actions = env.action_space.shape[0]
 
     torch.device(DEVICE)
@@ -223,7 +225,7 @@ def main():
     optimizer = optim.SGD(policy_net.parameters(), lr=LR, momentum=0.9)
     memory = ReplayMemory(MEMORY_SIZE)
 
-    num_episodes = 1000
+    num_episodes = 200
 
     for i_episode in range(num_episodes):
         start = time.time()

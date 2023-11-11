@@ -1,5 +1,69 @@
 import numpy as np
 
+def erase_piece(block_map, rotation, piece, position):
+    x, y = position
+
+    # decrement X because it's not zero indexed.
+    x -= 1
+
+    match piece:
+        # I block
+        case 0:
+            pass
+        # T block
+        case 1:
+            _erase_T_block(block_map, x, y, rotation)
+        # Z block
+        case 2:
+            pass
+        # S block
+        case 3:
+            pass
+        # J block
+        case 4:
+            pass
+        # L block
+        case 5:
+            pass
+        # Square block
+        case 6:
+            _erase_square_block(block_map, x, y)
+
+    return block_map
+
+def _erase_square_block(block_map, x, y):
+    block_map[y, x + 1] = 0
+    block_map[y, x] = 0
+    block_map[y + 1, x + 1] = 0
+    block_map[y + 1] = 0
+
+def _erase_I_block(block_map, x, y, rotation):
+    pass
+
+def _erase_T_block(block_map, x, y, rotation):
+    match rotation:
+        case 0:
+            block_map[y, x] = 0
+            block_map[y, x + 1] = 0
+            block_map[y + 1, x] = 0
+            block_map[y, x - 1] = 0
+        case 1:
+            block_map[y, x] = 0
+            block_map[y - 1, x] = 0
+            block_map[y + 1, x] = 0
+            block_map[y, x - 1] = 0
+        case 2:
+            block_map[y, x] = 0
+            block_map[y, x + 1] = 0
+            block_map[y - 1, x] = 0
+            block_map[y, x - 1] = 0
+        case 3:
+            block_map[y, x] = 0
+            block_map[y - 1, x] = 0
+            block_map[y + 1, x] = 0
+            block_map[y, x + 1] = 0
+
+
 def _create_J_piece():
     j_matrix = np.zeros(shape=(5, 5))
 

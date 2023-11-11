@@ -56,6 +56,5 @@ def find_empty_blocks(block_map):
                 state[i] += 1
                 found_empty = True
 
-    print(state)
     return state
 

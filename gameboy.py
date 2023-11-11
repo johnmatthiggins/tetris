@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 from dataclasses import dataclass
+import time
+import sys
 
 import pyboy as pb
 from gymnasium import Env
 
 import torch
-import sys
 import cv2
 import plotly.express as px
+import plotly.graph_objects as go
 import numpy as np
 import pyboy as pb
 
@@ -17,10 +19,14 @@ from state import parse_empty_blocks
 from state import build_block_map
 from state import find_empty_blocks
 
+from piece import erase_piece
+
 FPS = 60
 
 class GBGym(Env):
-    def __init__(self, device, speed=0):
+    def __init__(self, *, device='cpu', speed=0, live_feed=False):
+        self.live_feed = live_feed
+        self.ticks = 0
         self.device = device
         self.game_over_screen = np.load("game_over.npy")
 
@@ -31,12 +37,20 @@ class GBGym(Env):
         self.action_space = np.arange(0, 7)
         self.current_score = 0
 
+        if live_feed:
+            import matplotlib.pyplot as plt
+            ax = plt.subplot(1, 1, 1)
+            self.image_feed = ax
+            plt.ion()
+            plt.show()
+
     def score(self):
         game_score = read_score(self.sm.screen().screen_ndarray())
         return game_score
 
     # step moves forward two frames...
     def step(self, action):
+        self.ticks += 1
         gb = self.gameboy
         match action:
             case 0:
@@ -111,8 +125,20 @@ class GBGym(Env):
         reward = new_score / empty_block_score
         self.current_score = new_score
 
-        piece_state = _get_piece_state(self.gameboy).to_vector()
-        observation = np.concatenate([[piece_state], block_map])
+        piece_state = _get_piece_state(self.gameboy)
+        piece_vector = piece_state.to_vector()
+
+        if self.live_feed:
+            if self.ticks % 5 == 0:
+                erased_floating_piece = erase_piece(
+                        block_map=np.copy(block_map),
+                        rotation=piece_state.rotation_position,
+                        piece=piece_state.current_piece,
+                        position=(piece_state.x, piece_state.y)
+                    )
+                self.image_feed.imshow(erased_floating_piece)
+
+        observation = np.concatenate([[piece_vector], block_map])
         observation = torch.tensor([observation], device=self.device, dtype=torch.float32)
 
         truncated = False
@@ -139,6 +165,9 @@ class GBGym(Env):
 
     def close(self):
         self.gameboy.stop()
+
+        if self.live_feed:
+            plt.ioff()
 
     def reset(self):
         # just return an empty dict because info isn't being used...
@@ -211,11 +240,10 @@ def main():
         piece_state = _get_piece_state(gb)
         old_game_score = 0
 
-        screen = sm.screen().screen_ndarray()
-        screen_state = parse_empty_blocks(screen)
         wait_n_seconds(gb, 2)
 
         while not gb.tick():
+            time.sleep(0.05)
             screen = sm.screen().screen_ndarray()
 
             seg1 = screen[0, 16]
@@ -231,14 +259,10 @@ def main():
                 or np.all(seg1 == red_value)
             )
 
-            new_screen_state = parse_empty_blocks(screen)
-
-            if not np.all(screen_state == new_screen_state):
-                screen_state = new_screen_state
-
             new_piece_state = _get_piece_state(gb)
             if new_piece_state != piece_state:
                 piece_state = new_piece_state
+                print(piece_state)
 
             if is_game_over:
                 print("GAME IS OVER :(")
