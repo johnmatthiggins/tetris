@@ -15,6 +15,7 @@ def erase_piece(block_map, rotation, piece, position):
             _erase_T_block(block_map, x, y, rotation)
         # Z block
         case 2:
+            _erase_Z_block(block_map, x, y, rotation)
             pass
         # S block
         case 3:
@@ -87,6 +88,29 @@ def _erase_T_block(block_map, x, y, rotation):
             block_map[y - 1, x] = 0
             block_map[y + 1, x] = 0
             block_map[y, x + 1] = 0
+
+def _erase_Z_block(block_map, x, y, rotation):
+    match rotation:
+        case 0:
+            block_map[y, x]         = 0
+            block_map[y, x - 1]     = 0
+            block_map[y + 1, x + 1] = 0
+            block_map[y + 1, x]     = 0
+        case 1:
+            block_map[y, x]         = 0
+            block_map[y, x - 1]     = 0
+            block_map[y - 1, x - 1] = 0
+            block_map[y + 1, x]     = 0
+        case 2:
+            block_map[y - 1, x]     = 0
+            block_map[y - 1, x - 1] = 0
+            block_map[y, x + 1]     = 0
+            block_map[y, x]         = 0
+        case 3:
+            block_map[y - 1, x]     = 0
+            block_map[y, x]         = 0
+            block_map[y, x + 1]     = 0
+            block_map[y + 1, x + 1] = 0
 
 def _erase_J_block(block_map, x, y, rotation):
     match rotation:

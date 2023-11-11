@@ -21,6 +21,8 @@ from state import find_empty_blocks
 
 from piece import erase_piece
 
+FPS = 60
+
 class GBGym(Env):
     def __init__(self, *, device='cpu', speed=0, live_feed=False):
         self.live_feed = live_feed
