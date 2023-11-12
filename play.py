@@ -38,10 +38,11 @@ def main():
 
     state, info = gb.reset()
     state = state.unsqueeze(0)
+    terminated = False
 
-    while not gb.is_game_over():
+    while not terminated:
         next_action = model(state).max(1)[1]
-        state, reward, terminated, truncated = gb.step(next_action)
+        state, reward, terminated, truncated = gb.step(next_action.item())
         state = state.unsqueeze(0)
 
     gb.close()

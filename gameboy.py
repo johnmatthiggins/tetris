@@ -15,6 +15,7 @@ import pyboy as pb
 
 # local imports
 from score import read_score
+from score import read_lines
 from state import build_block_map
 from state import find_empty_blocks
 
@@ -36,6 +37,7 @@ class GBGym(Env):
         # different actions possible...
         self.action_space = np.arange(0, 41)
         self.current_score = 0
+        self.current_lines = 0
 
         if live_feed:
             import matplotlib.pyplot as plt
@@ -49,12 +51,17 @@ class GBGym(Env):
         game_score = read_score(self.sm.screen().screen_ndarray())
         return game_score
 
+    def lines(self):
+        game_score = read_lines(self.sm.screen().screen_ndarray())
+        return game_score
+
     # step moves forward two frames...
     def step(self, action):
         self.ticks += 1
         _make_move(action, self.gameboy, self.sm)
 
         new_score = self.score()
+        new_line_count = self.lines()
 
         # get numpy array that represents pixels...
         # chop out all the details other than the board...
@@ -68,9 +75,10 @@ class GBGym(Env):
         # empty_block_score = torch.sum(find_empty_blocks(block_map_minus_top_two_lines, piece_state)) or 1
 
         # reward is how much the score improved...
-        reward = new_score
+        reward = self.current_score
 
         self.current_score = new_score
+        self.current_lines = new_line_count
 
         if self.live_feed:
             if self.ticks % 2 == 0:
@@ -119,14 +127,21 @@ class GBGym(Env):
 
 def _is_game_over(rgb_screen):
     seg1 = rgb_screen[0, 16]
-    seg2 = rgb_screen[0, 32]
-    seg3 = rgb_screen[0, 64]
+    seg2 = rgb_screen[0, 24]
+    seg3 = rgb_screen[0, 32]
+    seg4 = rgb_screen[0, 40]
+    seg4 = rgb_screen[0, 48]
+    seg5 = rgb_screen[0, 56]
+    seg6 = rgb_screen[0, 64]
     red_value = np.array([0, 0, 248])
 
     return (
         np.all(seg1 == red_value)
         or np.all(seg2 == red_value)
         or np.all(seg3 == red_value)
+        or np.all(seg4 == red_value)
+        or np.all(seg5 == red_value)
+        or np.all(seg6 == red_value)
     )
 
 
@@ -189,11 +204,6 @@ def _make_move(move, gb, sm):
     piece_state = _get_piece_state(gb)
     position, rotations = _decode_move(move)
 
-    print("******************")
-    print("position  = %s" % str(position))
-    print("rotations = %s" % str(rotations))
-    print("******************")
-
     for _ in range(rotations):
         gb.send_input(pb.WindowEvent.PRESS_BUTTON_A)
         gb.tick()
@@ -243,12 +253,13 @@ def _decode_move(move):
 
 
 def main():
-    import matplotlib.pyplot as plt
+    if '--live-feed' in sys.argv:
+        import matplotlib.pyplot as plt
 
-    ax = plt.subplot(1, 1, 1)
-    image_feed = ax
-    plt.ion()
-    plt.show()
+        ax = plt.subplot(1, 1, 1)
+        image_feed = ax
+        plt.ion()
+        plt.show()
 
     with start_gameboy(1) as gb:
         sm = gb.botsupport_manager()
@@ -265,13 +276,14 @@ def main():
             block_map = build_block_map(screen)
             piece_state = _get_piece_state(gb)
 
-            erased_floating_piece = erase_piece(
-                block_map=np.copy(block_map),
-                rotation=piece_state.rotation_position,
-                piece=piece_state.current_piece,
-                position=(piece_state.x, piece_state.y),
-            )
-            image_feed.imshow(erased_floating_piece)
+            if "--live-feed" in sys.argv:
+                erased_floating_piece = erase_piece(
+                    block_map=np.copy(block_map),
+                    rotation=piece_state.rotation_position,
+                    piece=piece_state.current_piece,
+                    position=(piece_state.x, piece_state.y),
+                )
+                image_feed.imshow(erased_floating_piece)
 
             seg1 = screen[0, 16]
             seg2 = screen[0, 32]
@@ -295,7 +307,7 @@ def main():
                 print("GAME IS OVER :(")
                 break
 
-        fig = px.imshow(build_block_map(screen))
+        fig = px.imshow(screen)
         fig.show()
 
 

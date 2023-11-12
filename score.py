@@ -7,6 +7,11 @@ SCORE_RIGHT_X = 159
 SCORE_TOP_Y = 80
 SCORE_BTM_Y = 86
 
+LINES_LEFT_X = 112
+LINES_RIGHT_X = 159
+LINES_TOP_Y = 105
+LINES_BTM_Y = 111
+
 # BLACK PIXEL VALUE
 # I shortened it because i was tired of typing it.
 BPV = 248
@@ -134,8 +139,30 @@ def read_score(screen):
 
     return int(convert_score_to_string(score_part))
 
+# pass in screen in color...
+def read_lines(screen):
+    screen = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
+    score_part = screen[LINES_TOP_Y : LINES_BTM_Y + 1, LINES_LEFT_X : LINES_RIGHT_X + 2]
+
+    return int(convert_score_to_string(score_part))
+
 
 def convert_score_to_string(score_segment):
+    NUMBER_WIDTH = 7 + 1
+    NUMBER_HEIGHT = 6
+    pixelated_numbers = ""
+
+    for i in range(0, 6):
+        x_offset = i * NUMBER_WIDTH
+
+        pixelated_number = score_segment[:, x_offset + 1 : x_offset + NUMBER_WIDTH]
+        truncated = pixelated_number[1:7, 0:7]
+
+        pixelated_numbers += match_number_matrix(truncated)
+
+    return pixelated_numbers
+
+def convert_lines_to_string(score_segment):
     NUMBER_WIDTH = 7 + 1
     NUMBER_HEIGHT = 6
     pixelated_numbers = ""

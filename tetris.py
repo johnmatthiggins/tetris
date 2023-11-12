@@ -70,10 +70,12 @@ class TetrisNN(nn.Module):
         self.conv3 = nn.Conv2d(128, 64, 3)
         self.conv4 = nn.Conv2d(64, 32, 3)
         self.conv5 = nn.Conv2d(32, 8, 2)
-        self.fc1 = nn.Linear(78, 32)
-        self.fc2 = nn.Linear(32, 32)
-        self.fc3 = nn.Linear(32, 32)
-        self.fc4 = nn.Linear(32, n_actions)
+        self.fc1 = nn.Linear(78, 64)
+        self.fc2 = nn.Linear(64, 64)
+        self.fc3 = nn.Linear(64, 64)
+        self.fc3 = nn.Linear(64, 64)
+        self.fc3 = nn.Linear(64, 64)
+        self.fc4 = nn.Linear(64, n_actions)
 
     def forward(self, x):
         piece_indexes = torch.arange(start=0, end=6, dtype=torch.long)
@@ -105,7 +107,7 @@ class TetrisNN(nn.Module):
 # EPS_DECAY controls the rate of exponential decay of epsilon, higher means a slower decay
 # TAU is the update rate of the target network
 # LR is the learning rate of the ``SGD`` optimizer
-BATCH_SIZE = 100
+BATCH_SIZE = 128
 GAMMA = 0.0
 EPS_START = 0.9
 EPS_END = 0.05
@@ -113,10 +115,7 @@ EPS_DECAY = 1000
 TAU = 0.005
 LR = 1e-4
 
-MEMORY_LENGTH_SECONDS = 15
-
-# save the last n seconds
-MEMORY_SIZE = int(MEMORY_LENGTH_SECONDS * 7.5)
+MEMORY_SIZE = 10000
 
 
 def select_action(policy_net, env, state):
@@ -139,8 +138,8 @@ def select_action(policy_net, env, state):
         )
 
 
-def plot_durations(episode_durations, show_result=False):
-    durations_t = torch.tensor(episode_durations, dtype=torch.float)
+def plot_durations(episode_scores, show_result=False):
+    durations_t = torch.tensor(episode_scores, dtype=torch.float)
     # Take 100 episode averages and plot them too
     if len(durations_t) >= 100:
         means = durations_t.unfold(0, 100, 1).mean(1).view(-1)
@@ -148,12 +147,12 @@ def plot_durations(episode_durations, show_result=False):
 
     df = pd.DataFrame.from_dict(
         {
-            "episode_duration": durations_t.numpy(),
+            "episode_score": durations_t.numpy(),
             "episode_index": np.arange(0, len(durations_t)),
         }
     )
 
-    fig = px.line(df, x="episode_index", y="episode_duration")
+    fig = px.line(df, x="episode_index", y="episode_score")
     fig.show()
 
 
@@ -214,7 +213,7 @@ steps_done = 0
 def main():
     live_feed = "--live-feed" in sys.argv
 
-    episode_durations = list()
+    episode_scores = list()
 
     env = GBGym(device=DEVICE, speed=0, live_feed=live_feed)
     n_actions = env.action_space.shape[0]
@@ -234,6 +233,7 @@ def main():
     num_episodes = 1000
 
     for i_episode in range(num_episodes):
+        episode_score = 0
         start = time.time()
 
         # Initialize the environment and get it's state
@@ -244,6 +244,8 @@ def main():
         for t in count():
             action = select_action(policy_net, env, state)
             observation, reward, terminated, truncated = env.step(action.item())
+            episode_score += reward
+
             reward = torch.tensor([reward], device=DEVICE)
             done = terminated or truncated
 
@@ -273,7 +275,7 @@ def main():
             target_net.load_state_dict(target_net_state_dict)
 
             if done:
-                episode_durations.append(t + 1)
+                episode_scores.append(episode_score)
                 break
         end = time.time()
         duration_s = end - start
@@ -281,7 +283,7 @@ def main():
 
     torch.save(policy_net.state_dict(), "model.pt")
 
-    plot_durations(episode_durations, show_result=True)
+    plot_durations(episode_scores, show_result=True)
 
 
 if __name__ == "__main__":
