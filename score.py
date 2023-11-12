@@ -139,6 +139,7 @@ def read_score(screen):
 
     return int(convert_score_to_string(score_part))
 
+
 # pass in screen in color...
 def read_lines(screen):
     screen = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
@@ -161,6 +162,7 @@ def convert_score_to_string(score_segment):
         pixelated_numbers += match_number_matrix(truncated)
 
     return pixelated_numbers
+
 
 def convert_lines_to_string(score_segment):
     NUMBER_WIDTH = 7 + 1

@@ -224,6 +224,12 @@ def main():
     state, info = env.reset()
 
     policy_net = TetrisNN(n_actions).to(DEVICE)
+
+    if "--load" in sys.argv:
+        print("LOADING PRE-TRAINED MODEL")
+        policy_net.load_state_dict(torch.load("model.pt"))
+        policy_net.eval()
+
     target_net = TetrisNN(n_actions).to(DEVICE)
     target_net.load_state_dict(policy_net.state_dict())
 

@@ -75,7 +75,7 @@ class GBGym(Env):
         # empty_block_score = torch.sum(find_empty_blocks(block_map_minus_top_two_lines, piece_state)) or 1
 
         # reward is how much the score improved...
-        reward = self.current_score
+        reward = self.current_score + 100 * (new_line_count)
 
         self.current_score = new_score
         self.current_lines = new_line_count
@@ -253,7 +253,7 @@ def _decode_move(move):
 
 
 def main():
-    if '--live-feed' in sys.argv:
+    if "--live-feed" in sys.argv:
         import matplotlib.pyplot as plt
 
         ax = plt.subplot(1, 1, 1)
