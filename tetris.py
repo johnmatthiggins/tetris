@@ -23,6 +23,7 @@ Transition = namedtuple("Transition", ("state", "action", "next_state", "reward"
 
 
 def get_device():
+    device = "cpu"
     if not torch.backends.mps.is_available():
         if not torch.backends.mps.is_built():
             print(

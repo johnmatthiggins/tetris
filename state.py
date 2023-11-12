@@ -6,25 +6,21 @@ import plotly.express as px
 # local imports
 from piece import erase_piece
 
+def bumpiness_score(block_map):
+    screen = block_map[2:, :]
+    bump_vector = np.zeros(block_map.shape[1])
+    bumpiness_score = 0
 
-def parse_empty_blocks(rgb_screen):
-    bw_screen = cv2.cvtColor(rgb_screen, cv2.COLOR_BGR2GRAY)
-    state = np.zeros(10)
+    for i in range(screen.shape[1]):
+        if np.any(screen[:, i] > 0):
+            bump_vector[i] = screen.shape[0] - np.argmax(screen[:, i] > 0)
 
-    for i in range(10):
-        found_empty = False
-        for j in range(18):
-            x_offset = 16 + i * 8
-            y_offset = 143 - j * 8
+    for i in range(1, screen.shape[1]):
+        diff = np.abs(bump_vector[i] - bump_vector[i - 1])
+        bumpiness_score += diff
 
-            if found_empty and bw_screen[y_offset, x_offset] == 0:
-                state[i] = 1
-                break
-            elif bw_screen[y_offset, x_offset] != 0:
-                found_empty = True
-
-    return torch.tensor(state)
-
+    print(bump_vector)
+    return bumpiness_score
 
 def build_block_map(rgb_screen):
     bw_screen = cv2.cvtColor(rgb_screen, cv2.COLOR_BGR2GRAY)
@@ -42,25 +38,21 @@ def build_block_map(rgb_screen):
     return np.flip(state, axis=0)
 
 
-def find_empty_blocks(block_map, piece_state):
+def find_empty_blocks(block_map):
+    block_map = block_map[2:, :]
     state = torch.zeros((10,))
 
     for i in range(block_map.shape[1]):
-        found_empty = False
-        for j in range(block_map.shape[0]):
-            x_offset = i
-            y_offset = block_map.shape[0] - j - 1
+        strip = block_map[:, i]
+        if np.any(strip > 0):
+            end = np.argmax(strip > 0)
+            j = 0
+            while j < (strip.shape[0] - end - 1):
+                y_offset = strip.shape[0] - j - 1
 
-            # if the bottom block is empty, then anything above it is floating.
-            if j == 0 and block_map[y_offset, x_offset] == 0:
-                found_empty = True
-            elif found_empty and block_map[y_offset, x_offset] == 1:
-                state[i] += 1
-            elif (
-                block_map[y_offset, x_offset] == 0
-                and block_map[y_offset + 1, x_offset] == 1
-            ):
-                state[i] += 1
-                found_empty = True
+                if strip[y_offset] > 0:
+                    state[i] += 1
+
+                j += 1
 
     return state
