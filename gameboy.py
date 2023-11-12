@@ -63,6 +63,9 @@ class GBGym(Env):
         new_score = self.score()
         new_line_count = self.lines()
 
+        if new_line_count != self.current_lines:
+            print('LINE CLEAR!')
+
         # get numpy array that represents pixels...
         # chop out all the details other than the board...
         block_map = build_block_map(self.sm.screen().screen_ndarray())
@@ -110,6 +113,9 @@ class GBGym(Env):
             plt.ioff()
 
     def reset(self):
+        self.current_score = 0
+        self.current_lines = 0
+
         # just return an empty dict because info isn't being used...
         info = dict()
 
