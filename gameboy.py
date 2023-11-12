@@ -15,7 +15,6 @@ import pyboy as pb
 
 # local imports
 from score import read_score
-from state import parse_empty_blocks
 from state import build_block_map
 from state import find_empty_blocks
 
@@ -23,8 +22,9 @@ from piece import erase_piece
 
 FPS = 60
 
+
 class GBGym(Env):
-    def __init__(self, *, device='cpu', speed=0, live_feed=False):
+    def __init__(self, *, device="cpu", speed=0, live_feed=False):
         self.live_feed = live_feed
         self.ticks = 0
         self.device = device
@@ -34,11 +34,12 @@ class GBGym(Env):
         self.sm = self.gameboy.botsupport_manager()
 
         # different actions possible...
-        self.action_space = np.arange(0, 7)
+        self.action_space = np.arange(0, 41)
         self.current_score = 0
 
         if live_feed:
             import matplotlib.pyplot as plt
+
             ax = plt.subplot(1, 1, 1)
             self.image_feed = ax
             plt.ion()
@@ -51,66 +52,7 @@ class GBGym(Env):
     # step moves forward two frames...
     def step(self, action):
         self.ticks += 1
-        gb = self.gameboy
-        match action:
-            case 0:
-                for _ in range(0, 8):
-                    gb.tick()
-            case 1:
-                gb.send_input(pb.WindowEvent.PRESS_ARROW_DOWN)
-
-                for _ in range(7):
-                    gb.tick()
-
-                gb.send_input(pb.WindowEvent.RELEASE_ARROW_DOWN)
-                gb.tick()
-            case 2:
-                gb.send_input(pb.WindowEvent.PRESS_ARROW_LEFT)
-                for _ in range(7):
-                    gb.tick()
-
-                gb.send_input(pb.WindowEvent.RELEASE_ARROW_LEFT)
-                gb.tick()
-            case 3:
-                gb.send_input(pb.WindowEvent.PRESS_ARROW_RIGHT)
-
-                for _ in range(7):
-                    gb.tick()
-
-                gb.send_input(pb.WindowEvent.RELEASE_ARROW_RIGHT)
-                gb.tick()
-            case 4:
-                gb.send_input(pb.WindowEvent.PRESS_BUTTON_A)
-                gb.tick()
-                gb.send_input(pb.WindowEvent.RELEASE_BUTTON_A)
-                gb.tick()
-
-                for _ in range(3):
-                    gb.tick()
-                    gb.tick()
-
-            case 5:
-                for _ in range(2):
-                    gb.send_input(pb.WindowEvent.PRESS_BUTTON_A)
-                    gb.tick()
-                    gb.send_input(pb.WindowEvent.RELEASE_BUTTON_A)
-                    gb.tick()
-
-                for _ in range(2):
-                    gb.tick()
-                    gb.tick()
-            case 6:
-                for _ in range(3):
-                    gb.send_input(pb.WindowEvent.PRESS_BUTTON_A)
-                    gb.tick()
-                    gb.send_input(pb.WindowEvent.RELEASE_BUTTON_A)
-                    gb.tick()
-
-                gb.tick()
-                gb.tick()
-
-            case _:
-                pass
+        _make_move(action, self.gameboy, self.sm)
 
         new_score = self.score()
 
@@ -122,24 +64,22 @@ class GBGym(Env):
         piece_vector = piece_state.to_vector()
 
         # If emtpy block score is zero just use 1
-        empty_block_score = torch.sum(find_empty_blocks(block_map, piece_state)) or 1
+        # block_map_minus_top_two_lines = block_map[2:, :]
+        # empty_block_score = torch.sum(find_empty_blocks(block_map_minus_top_two_lines, piece_state)) or 1
 
         # reward is how much the score improved...
-        reward = new_score / empty_block_score
+        reward = new_score
+
         self.current_score = new_score
 
         if self.live_feed:
             if self.ticks % 2 == 0:
-                erased_floating_piece = erase_piece(
-                        block_map=np.copy(block_map),
-                        rotation=piece_state.rotation_position,
-                        piece=piece_state.current_piece,
-                        position=(piece_state.x, piece_state.y)
-                    )
-                self.image_feed.imshow(erased_floating_piece)
+                self.image_feed.imshow(block_map_minus_top_two_lines)
 
         observation = np.concatenate([[piece_vector], block_map])
-        observation = torch.tensor([observation], device=self.device, dtype=torch.float32)
+        observation = torch.tensor(
+            [observation], device=self.device, dtype=torch.float32
+        )
 
         truncated = False
         terminated = self.is_game_over()
@@ -153,16 +93,7 @@ class GBGym(Env):
     # kinda janky but it hasn't failed me yet...
     def is_game_over(self):
         screen = self.sm.screen().screen_ndarray()
-        seg1 = screen[0, 16]
-        seg2 = screen[0, 32]
-        seg3 = screen[0, 64]
-        red_value = np.array([0, 0, 248])
-
-        return (
-            np.all(seg1 == red_value)
-            or np.all(seg2 == red_value)
-            or np.all(seg3 == red_value)
-        )
+        return _is_game_over(screen)
 
     def close(self):
         self.gameboy.stop()
@@ -184,6 +115,20 @@ class GBGym(Env):
         state = torch.tensor([state], device=self.device, dtype=torch.float32)
 
         return (state, info)
+
+
+def _is_game_over(rgb_screen):
+    seg1 = rgb_screen[0, 16]
+    seg2 = rgb_screen[0, 32]
+    seg3 = rgb_screen[0, 64]
+    red_value = np.array([0, 0, 248])
+
+    return (
+        np.all(seg1 == red_value)
+        or np.all(seg2 == red_value)
+        or np.all(seg3 == red_value)
+    )
+
 
 @dataclass
 class PieceState:
@@ -210,6 +155,7 @@ class PieceState:
             ]
         )
 
+
 # returns vector composed of numbers representing
 # [x_position, y_position, rotation_state, previous_piece, current_piece, next_piece]
 def _get_piece_state(gb):
@@ -230,10 +176,80 @@ def _get_piece_state(gb):
     previous_piece = gb.get_memory_value(PREVIOUS_PIECE_ADDR)
 
     return PieceState(
-        x, y, next_piece, current_piece, previous_piece, rotation_position
+        x=x,
+        y=y,
+        next_piece=next_piece,
+        current_piece=current_piece,
+        previous_piece=previous_piece,
+        rotation_position=rotation_position,
     )
 
+
+def _make_move(move, gb, sm):
+    piece_state = _get_piece_state(gb)
+    position, rotations = _decode_move(move)
+
+    print("******************")
+    print("position  = %s" % str(position))
+    print("rotations = %s" % str(rotations))
+    print("******************")
+
+    for _ in range(rotations):
+        gb.send_input(pb.WindowEvent.PRESS_BUTTON_A)
+        gb.tick()
+        gb.tick()
+        gb.send_input(pb.WindowEvent.RELEASE_BUTTON_A)
+        gb.tick()
+
+    if position != 0:
+        if position > 5:
+            for _ in range(position - 5):
+                gb.send_input(pb.WindowEvent.PRESS_ARROW_LEFT)
+                gb.tick()
+                gb.tick()
+                gb.send_input(pb.WindowEvent.RELEASE_ARROW_LEFT)
+                gb.tick()
+        else:
+            for _ in range(position):
+                gb.send_input(pb.WindowEvent.PRESS_ARROW_RIGHT)
+                gb.tick()
+                gb.tick()
+                gb.send_input(pb.WindowEvent.RELEASE_ARROW_RIGHT)
+                gb.tick()
+
+    new_piece_state = _get_piece_state(gb)
+    screen = sm.screen().screen_ndarray()
+    while (
+        new_piece_state.current_piece == piece_state.current_piece
+        and new_piece_state.next_piece == piece_state.next_piece
+        and new_piece_state.previous_piece == piece_state.previous_piece
+        and not _is_game_over(screen)
+    ):
+        gb.send_input(pb.WindowEvent.PRESS_ARROW_DOWN)
+        gb.tick()
+
+        new_piece_state = _get_piece_state(gb)
+        screen = sm.screen().screen_ndarray()
+
+    gb.send_input(pb.WindowEvent.RELEASE_ARROW_DOWN)
+    gb.tick()
+
+
+def _decode_move(move):
+    horizontal_position = (move & 0x3C) >> 2
+    rotations = move & 0x03
+
+    return (horizontal_position, rotations)
+
+
 def main():
+    import matplotlib.pyplot as plt
+
+    ax = plt.subplot(1, 1, 1)
+    image_feed = ax
+    plt.ion()
+    plt.show()
+
     with start_gameboy(1) as gb:
         sm = gb.botsupport_manager()
         game_over_screen = np.load("game_over.npy")
@@ -244,8 +260,18 @@ def main():
         wait_n_seconds(gb, 2)
 
         while not gb.tick():
-            time.sleep(0.05)
             screen = sm.screen().screen_ndarray()
+
+            block_map = build_block_map(screen)
+            piece_state = _get_piece_state(gb)
+
+            erased_floating_piece = erase_piece(
+                block_map=np.copy(block_map),
+                rotation=piece_state.rotation_position,
+                piece=piece_state.current_piece,
+                position=(piece_state.x, piece_state.y),
+            )
+            image_feed.imshow(erased_floating_piece)
 
             seg1 = screen[0, 16]
             seg2 = screen[0, 32]
@@ -288,6 +314,7 @@ def start_gameboy(speed=1):
     gb.tick()
 
     return gb
+
 
 def seconds_to_frames(seconds):
     return seconds * FPS

@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def erase_piece(block_map, rotation, piece, position):
     x, y = position
 
@@ -31,11 +32,13 @@ def erase_piece(block_map, rotation, piece, position):
 
     return block_map
 
+
 def _erase_square_block(block_map, x, y):
     block_map[y, x + 1] = 0
     block_map[y, x] = 0
     block_map[y + 1, x + 1] = 0
     block_map[y + 1] = 0
+
 
 def _erase_I_block(block_map, x, y, rotation):
     # already touching the bottom so it doesn't need to be removed...
@@ -45,7 +48,7 @@ def _erase_I_block(block_map, x, y, rotation):
     match rotation:
         case 0 | 2:
             if block_map[y, x] == 1:
-                block_map[y, x]     = 0
+                block_map[y, x] = 0
                 block_map[y, x - 1] = 0
                 block_map[y, x + 1] = 0
                 block_map[y, x + 2] = 0
@@ -54,7 +57,7 @@ def _erase_I_block(block_map, x, y, rotation):
                 # if it is, ignore it because it won't effect reward calculation.
                 if y < 17:
                     y += 1
-                    block_map[y, x]     = 0
+                    block_map[y, x] = 0
                     block_map[y, x - 1] = 0
                     block_map[y, x + 1] = 0
                     block_map[y, x + 2] = 0
@@ -68,51 +71,57 @@ def _erase_I_block(block_map, x, y, rotation):
             block_map[y + 1, x] = 0
             block_map[y + 2, x] = 0
 
+
 def _erase_T_block(block_map, x, y, rotation):
     match rotation:
         case 0:
-            block_map[y, x]     = 0
+            block_map[y, x] = 0
             block_map[y, x + 1] = 0
             block_map[y + 1, x] = 0
             block_map[y, x - 1] = 0
         case 1:
-            block_map[y, x]     = 0
+            block_map[y, x] = 0
             block_map[y - 1, x] = 0
             block_map[y + 1, x] = 0
             block_map[y, x - 1] = 0
         case 2:
-            block_map[y, x]     = 0
+            block_map[y, x] = 0
             block_map[y, x + 1] = 0
             block_map[y - 1, x] = 0
             block_map[y, x - 1] = 0
         case 3:
-            block_map[y, x]     = 0
+            block_map[y, x] = 0
             block_map[y - 1, x] = 0
             block_map[y + 1, x] = 0
             block_map[y, x + 1] = 0
 
+
 def _erase_Z_block(block_map, x, y, rotation):
-    match rotation:
-        case 0:
-            block_map[y, x]         = 0
-            block_map[y, x - 1]     = 0
-            block_map[y + 1, x + 1] = 0
-            block_map[y + 1, x]     = 0
-        case 1:
-            block_map[y, x]         = 0
-            block_map[y, x - 1]     = 0
-            block_map[y - 1, x - 1] = 0
-            block_map[y + 1, x]     = 0
-        case 2:
-            block_map[y - 1, x]     = 0
-            block_map[y - 1, x - 1] = 0
-            block_map[y, x + 1]     = 0
-            block_map[y, x]         = 0
-        case 3:
-            block_map[y - 1, x]     = 0
-            block_map[y, x]         = 0
-            block_map[y, x + 1]     = 0
-            block_map[y + 1, x + 1] = 0
+    # match rotation:
+    #     case 0:
+    #         block_map[y, x]         = 0
+    #         block_map[y, x - 1]     = 0
+    #         block_map[y + 1, x + 1] = 0
+    #         block_map[y + 1, x]     = 0
+    #     case 1:
+    #         block_map[y, x]         = 0
+    #         block_map[y, x - 1]     = 0
+    #         block_map[y - 1, x - 1] = 0
+    #         block_map[y + 1, x]     = 0
+    #     case 2:
+    #         block_map[y - 1, x]     = 0
+    #         block_map[y - 1, x - 1] = 0
+    #         block_map[y, x + 1]     = 0
+    #         block_map[y, x]         = 0
+    #     case 3:
+    #         block_map[y - 1, x]     = 0
+    #         block_map[y, x]         = 0
+    #         block_map[y, x + 1]     = 0
+    #         block_map[y + 1, x + 1] = 0
+    for i in [1, 0, -1]:
+        for j in [1, 0, -1]:
+            block_map[y + j, x + i] = 0
+
 
 def _erase_S_block(block_map, x, y, rotation):
     match rotation:
@@ -133,10 +142,11 @@ def _erase_S_block(block_map, x, y, rotation):
             block_map[y - 1, x] = 0
             block_map[y - 1, x - 1] = 0
         case 3:
-            block_map[y - 1, x]     = 0
-            block_map[y, x]         = 0
-            block_map[y, x + 1]     = 0
+            block_map[y - 1, x] = 0
+            block_map[y, x] = 0
+            block_map[y, x + 1] = 0
             block_map[y + 1, x + 1] = 0
+
 
 def _erase_J_block(block_map, x, y, rotation):
     match rotation:
@@ -161,6 +171,7 @@ def _erase_J_block(block_map, x, y, rotation):
             block_map[y, x] = 0
             block_map[y + 1, x] = 0
 
+
 def _erase_L_block(block_map, x, y, rotation):
     match rotation:
         case 0:
@@ -183,53 +194,3 @@ def _erase_L_block(block_map, x, y, rotation):
             block_map[y, x] = 0
             block_map[y + 1, x] = 0
             block_map[y + 1, x + 1] = 0
-
-def _create_J_piece():
-    j_matrix = np.zeros(shape=(5, 5))
-
-    # make J shape
-    j_matrix[1, 2] = 1
-    j_matrix[2, 2] = 1
-    j_matrix[3, 2] = 1
-    j_matrix[3, 1] = 1
-
-    return j_matrix
-
-
-def _create_L_piece():
-    l_matrix = np.flip(_create_J_piece(), axis=1)
-
-    return l_matrix
-
-
-def _create_square():
-    square = np.zeros(shape=(5, 5))
-    square[2, 1] = 1
-    square[2, 3] = 1
-    square[3, 3] = 1
-    square[3, 2] = 1
-
-    return square
-
-
-def _create_I_piece():
-    pass
-
-
-def _create_T_piece():
-    tpiece = np.zeros(shape=(5, 5))
-
-    tpiece[2, 1] = 1
-    tpiece[2, 2] = 1
-    tpiece[2, 3] = 1
-    tpiece[3, 2] = 1
-
-    return tpiece
-
-
-def _create_S_piece():
-    pass
-
-
-def _create_Z_piece():
-    pass

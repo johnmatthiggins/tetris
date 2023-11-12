@@ -21,6 +21,7 @@ from gameboy import GBGym
 
 Transition = namedtuple("Transition", ("state", "action", "next_state", "reward"))
 
+
 def get_device():
     if not torch.backends.mps.is_available():
         if not torch.backends.mps.is_built():
@@ -41,7 +42,9 @@ def get_device():
 
     return device
 
+
 DEVICE = get_device()
+
 
 class ReplayMemory(object):
     def __init__(self, capacity):
@@ -115,6 +118,7 @@ MEMORY_LENGTH_SECONDS = 15
 # save the last n seconds
 MEMORY_SIZE = int(MEMORY_LENGTH_SECONDS * 7.5)
 
+
 def select_action(policy_net, env, state):
     global steps_done
     sample = random.random()
@@ -133,6 +137,7 @@ def select_action(policy_net, env, state):
         return torch.tensor(
             [[np.random.choice(env.action_space)]], device=DEVICE, dtype=torch.long
         )
+
 
 def plot_durations(episode_durations, show_result=False):
     durations_t = torch.tensor(episode_durations, dtype=torch.float)
@@ -205,8 +210,9 @@ def optimize_model(policy_net, target_net, memory, optimizer):
 
 steps_done = 0
 
+
 def main():
-    live_feed = '--live-feed' in sys.argv
+    live_feed = "--live-feed" in sys.argv
 
     episode_durations = list()
 
@@ -225,7 +231,7 @@ def main():
     optimizer = optim.SGD(policy_net.parameters(), lr=LR, momentum=0.9)
     memory = ReplayMemory(MEMORY_SIZE)
 
-    num_episodes = 200
+    num_episodes = 1000
 
     for i_episode in range(num_episodes):
         start = time.time()
@@ -271,11 +277,12 @@ def main():
                 break
         end = time.time()
         duration_s = end - start
-        print('Episode took %s seconds...' % str(duration_s))
+        print("Episode took %s seconds..." % str(duration_s))
 
-    torch.save(policy_net.state_dict(), 'model.pt')
+    torch.save(policy_net.state_dict(), "model.pt")
 
     plot_durations(episode_durations, show_result=True)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
