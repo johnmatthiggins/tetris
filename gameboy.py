@@ -72,12 +72,17 @@ class GBGym(Env):
         empty_blocks = find_empty_blocks(block_map)
 
         # reward is how much the score improved...
-        reward = self.current_score + 100 * (new_line_count) - bumpiness - (empty_blocks.sum() * 10)
+        reward = (
+            self.current_score
+            + (100 * new_line_count)
+            - (bumpiness * 10)
+            - (empty_blocks.sum() * 10)
+        )
 
-        print('*' * 10)
-        print('EMPTY_BLOCKS: %s' % str(empty_blocks))
-        print('REWARD: %s' % str(reward))
-        # input()
+        print("*" * 10)
+        print("EMPTY_BLOCKS: %s" % str(empty_blocks))
+        print("REWARD: %s" % str(reward))
+        input()
 
         self.current_score = new_score
         self.current_lines = new_line_count
