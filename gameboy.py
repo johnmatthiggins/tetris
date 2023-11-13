@@ -18,8 +18,7 @@ from score import read_score
 from score import read_lines
 from state import build_block_map
 from state import find_empty_blocks
-
-from piece import erase_piece
+from state import bumpiness_score
 
 FPS = 60
 
@@ -72,13 +71,16 @@ class GBGym(Env):
 
         piece_state = _get_piece_state(self.gameboy)
         piece_vector = piece_state.to_vector()
-
-        # If emtpy block score is zero just use 1
-        # block_map_minus_top_two_lines = block_map[2:, :]
-        # empty_block_score = torch.sum(find_empty_blocks(block_map_minus_top_two_lines, piece_state)) or 1
+        bumpiness = bumpiness_score(block_map)
+        empty_blocks = find_empty_blocks(block_map)
 
         # reward is how much the score improved...
-        reward = self.current_score + 100 * (new_line_count)
+        reward = self.current_score + 100 * (new_line_count) - bumpiness - (empty_blocks.sum() * 10)
+
+        print('*' * 10)
+        print('EMPTY_BLOCKS: %s' % str(empty_blocks))
+        print('REWARD: %s' % str(reward))
+        # input()
 
         self.current_score = new_score
         self.current_lines = new_line_count
