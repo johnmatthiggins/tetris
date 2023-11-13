@@ -82,7 +82,7 @@ class GBGym(Env):
 
         self.current_emptiness = empty_blocks.sum()
 
-        reward = score_diff + 100 * (line_diff) - bump_diff - empty_diff
+        reward = score_diff + 10 * (line_diff) - bump_diff - empty_diff
 
         print('*' * 10)
         print('EMPTY_BLOCKS: %s' % str(empty_blocks))
