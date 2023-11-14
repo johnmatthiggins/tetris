@@ -33,7 +33,7 @@ class GBGym(Env):
         self.sm = self.gameboy.botsupport_manager()
 
         # different actions possible...
-        self.action_space = np.arange(0, 41)
+        self.action_space = np.arange(0, 44)
         self.current_score = 0
         self.current_lines = 0
         self.current_bumpiness = 0
