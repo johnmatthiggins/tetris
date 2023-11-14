@@ -66,12 +66,10 @@ class ReplayMemory(object):
 class TetrisNN(nn.Module):
     def __init__(self, n_actions):
         super().__init__()
-        self.conv1 = nn.Conv2d(1, 32, 3)
-        self.conv2 = nn.Conv2d(32, 128, 3)
-        self.conv3 = nn.Conv2d(128, 64, 3)
-        self.conv4 = nn.Conv2d(64, 32, 3)
-        self.conv5 = nn.Conv2d(32, 8, 2)
-        self.fc1 = nn.Linear(78, 64)
+        self.conv1 = nn.Conv2d(1, 64, 5)
+        self.conv2 = nn.Conv2d(64, 64, 3)
+        self.conv3 = nn.Conv2d(64, 64, 3)
+        self.fc1 = nn.Linear(1286, 64)
         self.fc2 = nn.Linear(64, 64)
         self.fc3 = nn.Linear(64, 64)
         self.fc3 = nn.Linear(64, 64)
@@ -91,8 +89,6 @@ class TetrisNN(nn.Module):
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
-        x = F.relu(self.conv4(x))
-        x = F.relu(self.conv5(x))
         x = torch.cat([torch.flatten(x, 1), piece_state], dim=1)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
@@ -107,8 +103,8 @@ class TetrisNN(nn.Module):
 # EPS_END is the final value of epsilon
 # EPS_DECAY controls the rate of exponential decay of epsilon, higher means a slower decay
 # TAU is the update rate of the target network
-# LR is the learning rate of the ``SGD`` optimizer
-BATCH_SIZE = 128
+# LR is the learning rate of the ``Adam`` optimizer
+BATCH_SIZE = 64
 GAMMA = 0.0
 EPS_START = 0.9
 EPS_END = 0.05
@@ -116,8 +112,7 @@ EPS_DECAY = 1000
 TAU = 0.005
 LR = 1e-4
 
-MEMORY_SIZE = 10000
-
+MEMORY_SIZE = 1000
 
 def select_action(policy_net, env, state):
     global steps_done
