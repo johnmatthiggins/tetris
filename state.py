@@ -6,6 +6,7 @@ import plotly.express as px
 # local imports
 from piece import erase_piece
 
+
 def bumpiness_score(block_map):
     screen = block_map[2:, :]
     bump_vector = np.zeros(block_map.shape[1])
@@ -20,6 +21,7 @@ def bumpiness_score(block_map):
         bumpiness_score += diff
 
     return bumpiness_score
+
 
 def build_block_map(rgb_screen):
     bw_screen = cv2.cvtColor(rgb_screen, cv2.COLOR_BGR2GRAY)

@@ -21,14 +21,13 @@ from state import find_empty_blocks
 from state import bumpiness_score
 
 FPS = 60
+GAME_OVER = np.load("game_over.npy")
 
 
 class GBGym(Env):
     def __init__(self, *, device="cpu", speed=0, live_feed=False):
         self.live_feed = live_feed
         self.device = device
-        self.game_over_screen = np.load("game_over.npy")
-
         self.gameboy = start_gameboy(speed)
         self.sm = self.gameboy.botsupport_manager()
 
@@ -83,11 +82,6 @@ class GBGym(Env):
         self.current_emptiness = empty_blocks.sum()
 
         reward = score_diff + 10 * (line_diff) - bump_diff - empty_diff
-
-        print('*' * 10)
-        print('EMPTY_BLOCKS: %s' % str(empty_blocks))
-        print('REWARD: %s' % str(reward))
-        print('*' * 10)
 
         self.current_score = new_score
         self.current_lines = new_line_count
@@ -158,7 +152,13 @@ def _is_game_over(rgb_screen):
         or np.all(seg4 == red_value)
         or np.all(seg5 == red_value)
         or np.all(seg6 == red_value)
+        or _is_game_over_screen_showing(rgb_screen)
     )
+
+
+def _is_game_over_screen_showing(rgb_screen):
+    relevant_part = rgb_screen[21 : 68 + 1, 29 : 84 + 1]
+    return np.all(relevant_part == GAME_OVER)
 
 
 @dataclass
