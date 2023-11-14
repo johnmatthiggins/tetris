@@ -110,7 +110,7 @@ EPS_START = 0.9
 EPS_END = 0.05
 EPS_DECAY = 1000
 TAU = 0.005
-LR = 1e-4
+LR = 1e-5
 
 MEMORY_SIZE = 1000
 
@@ -232,7 +232,7 @@ def main():
     optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
     memory = ReplayMemory(MEMORY_SIZE)
 
-    num_episodes = 1000
+    num_episodes = 3000
 
     for i_episode in range(num_episodes):
         episode_score = 0
