@@ -71,7 +71,7 @@ class GBGym(Env):
         piece_state = _get_piece_state(self.gameboy)
         piece_vector = piece_state.to_vector()
 
-        bumpiness = bumpiness_score(block_map)
+        bumpiness, _ = bumpiness_score(block_map)
         bump_diff = bumpiness - self.current_bumpiness
 
         self.current_bumpiness = bumpiness
@@ -128,7 +128,10 @@ class GBGym(Env):
         f.close()
         block_map = build_block_map(self.sm.screen().screen_ndarray())
 
+        _, bump_vector = bumpiness_score(block_map)
+
         piece_state = _get_piece_state(self.gameboy).to_vector()
+
         state = np.concatenate([[piece_state], block_map])
         state = torch.tensor([state], device=self.device, dtype=torch.float32)
 

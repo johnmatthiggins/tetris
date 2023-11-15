@@ -9,7 +9,6 @@ import random
 import plotly.express as px
 import numpy as np
 import pandas as pd
-
 import gymnasium as gym
 
 import torch
@@ -17,10 +16,11 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
+# local imports
 from gameboy import GBGym
+from state import bumpiness_score
 
 Transition = namedtuple("Transition", ("state", "action", "next_state", "reward"))
-
 
 def get_device():
     device = "cpu"
@@ -66,15 +66,28 @@ class ReplayMemory(object):
 class TetrisNN(nn.Module):
     def __init__(self, n_actions):
         super().__init__()
-        self.conv1 = nn.Conv2d(1, 64, 5)
-        self.conv2 = nn.Conv2d(64, 64, 3)
-        self.conv3 = nn.Conv2d(64, 64, 3)
-        self.fc1 = nn.Linear(1286, 64)
+        self.device = get_device()
+
+        self.convLeft1 = nn.Conv2d(1, 64, 5)
+        self.convLeft2 = nn.Conv2d(64, 64, 3)
+        self.convLeft3 = nn.Conv2d(64, 64, 3)
+
+        self.convRight1 = nn.Conv1d(1, 64, 3)
+        self.convRight2 = nn.Conv1d(64, 64, 3)
+        self.convRight3 = nn.Conv1d(64, 64, 3)
+
+        self.fc1 = nn.Linear(1542, 64)
         self.fc2 = nn.Linear(64, 64)
         self.fc3 = nn.Linear(64, 64)
         self.fc3 = nn.Linear(64, 64)
         self.fc3 = nn.Linear(64, 64)
         self.fc4 = nn.Linear(64, n_actions)
+
+        self.vbump_score = lambda arr: torch.tensor(
+            [[bumpiness_score(item)[1]] for item in arr],
+            device=self.device,
+            dtype=torch.float32,
+        )
 
     def forward(self, x):
         piece_indexes = torch.arange(start=0, end=6, dtype=torch.long)
@@ -86,10 +99,20 @@ class TetrisNN(nn.Module):
         screen_range = torch.arange(start=1, end=x.shape[2], dtype=torch.long)
         x = x[:, :, screen_range, :]
 
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
-        x = F.relu(self.conv3(x))
-        x = torch.cat([torch.flatten(x, 1), piece_state], dim=1)
+        # terrain formed by blocks...
+        bump_vectors = self.vbump_score(x[:, 0, :, :].cpu().numpy())
+
+        leftX = F.relu(self.convLeft1(x))
+        leftX = F.relu(self.convLeft2(leftX))
+        leftX = F.relu(self.convLeft3(leftX))
+
+        rightX = F.relu(self.convRight1(bump_vectors))
+        rightX = F.relu(self.convRight2(rightX))
+        rightX = F.relu(self.convRight3(rightX))
+
+        x = torch.cat(
+            [torch.flatten(leftX, 1), piece_state, torch.flatten(rightX, 1)], dim=1
+        )
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
@@ -105,14 +128,15 @@ class TetrisNN(nn.Module):
 # TAU is the update rate of the target network
 # LR is the learning rate of the ``Adam`` optimizer
 BATCH_SIZE = 64
-GAMMA = 0.0
+GAMMA = 0.99
 EPS_START = 0.9
 EPS_END = 0.05
 EPS_DECAY = 1000
 TAU = 0.005
-LR = 1e-5
+LR = 1e-4
 
 MEMORY_SIZE = 1000
+
 
 def select_action(policy_net, env, state):
     global steps_done
@@ -232,7 +256,7 @@ def main():
     optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
     memory = ReplayMemory(MEMORY_SIZE)
 
-    num_episodes = 3000
+    num_episodes = 20000
 
     for i_episode in range(num_episodes):
         episode_score = 0
