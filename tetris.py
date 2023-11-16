@@ -48,7 +48,7 @@ def main():
     optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
     memory = ReplayMemory(MEMORY_SIZE)
 
-    num_episodes = 20000
+    num_episodes = 5000
 
     for i_episode in range(num_episodes):
         episode_score = 0
@@ -214,9 +214,9 @@ EPS_START = 0.9
 EPS_END = 0.05
 EPS_DECAY = 1000
 TAU = 0.005
-LR = 1e-5
+LR = 1e-6
 
-MEMORY_SIZE = 10000
+MEMORY_SIZE = 3000
 
 def select_action(policy_net, env, state):
     global steps_done
