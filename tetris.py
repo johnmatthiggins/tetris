@@ -22,6 +22,89 @@ from state import bumpiness_score
 
 Transition = namedtuple("Transition", ("state", "action", "next_state", "reward"))
 
+def main():
+    live_feed = "--live-feed" in sys.argv
+
+    episode_scores = list()
+
+    env = GBGym(device=DEVICE, speed=0, live_feed=live_feed)
+    n_actions = env.action_space.shape[0]
+
+    torch.device(DEVICE)
+
+    # Get the number of state observations
+    state, info = env.reset()
+
+    policy_net = TetrisNN(n_actions).to(DEVICE)
+
+    if "--load" in sys.argv:
+        print("LOADING PRE-TRAINED MODEL")
+        policy_net.load_state_dict(torch.load("model.pt"))
+        policy_net.eval()
+
+    target_net = TetrisNN(n_actions).to(DEVICE)
+    target_net.load_state_dict(policy_net.state_dict())
+
+    optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
+    memory = ReplayMemory(MEMORY_SIZE)
+
+    num_episodes = 20000
+
+    for i_episode in range(num_episodes):
+        episode_score = 0
+        start = time.time()
+
+        # Initialize the environment and get it's state
+        state, info = env.reset()
+        state = state.unsqueeze(0)
+        print("Starting episode... [%d/%d]" % (i_episode + 1, num_episodes))
+
+        for t in count():
+            action = select_action(policy_net, env, state)
+            observation, reward, terminated, truncated = env.step(action.item())
+            episode_score += reward
+
+            reward = torch.tensor([reward], device=DEVICE)
+            done = terminated or truncated
+
+            if terminated:
+                next_state = None
+            else:
+                next_state = observation.unsqueeze(0)
+
+            # Store the transition in memory
+            memory.push(state, action, next_state, reward)
+
+            # Move to the next state
+            state = next_state
+
+            # Perform one step of the optimization (on the policy network)
+            optimize_model(policy_net, target_net, memory, optimizer)
+
+            # Soft update of the target network's weights
+            # θ′ ← τ θ + (1 −τ )θ′
+            target_net_state_dict = target_net.state_dict()
+            policy_net_state_dict = policy_net.state_dict()
+
+            for key in policy_net_state_dict:
+                target_net_state_dict[key] = policy_net_state_dict[
+                    key
+                ] * TAU + target_net_state_dict[key] * (1 - TAU)
+            target_net.load_state_dict(target_net_state_dict)
+
+            if done:
+                episode_scores.append(episode_score)
+                break
+        end = time.time()
+        duration_s = end - start
+        print("Episode took %s seconds..." % str(duration_s))
+
+    torch.save(policy_net.state_dict(), "model.pt")
+
+    plot_durations(episode_scores, show_result=True)
+
+
+
 def get_device():
     device = "cpu"
     if not torch.backends.mps.is_available():
@@ -43,9 +126,7 @@ def get_device():
 
     return device
 
-
 DEVICE = get_device()
-
 
 class ReplayMemory(object):
     def __init__(self, capacity):
@@ -127,7 +208,7 @@ class TetrisNN(nn.Module):
 # EPS_DECAY controls the rate of exponential decay of epsilon, higher means a slower decay
 # TAU is the update rate of the target network
 # LR is the learning rate of the ``Adam`` optimizer
-BATCH_SIZE = 64
+BATCH_SIZE = 128
 GAMMA = 0.99
 EPS_START = 0.9
 EPS_END = 0.05
@@ -135,8 +216,7 @@ EPS_DECAY = 1000
 TAU = 0.005
 LR = 1e-4
 
-MEMORY_SIZE = 1000
-
+MEMORY_SIZE = 2048
 
 def select_action(policy_net, env, state):
     global steps_done
@@ -228,88 +308,6 @@ def optimize_model(policy_net, target_net, memory, optimizer):
 
 
 steps_done = 0
-
-
-def main():
-    live_feed = "--live-feed" in sys.argv
-
-    episode_scores = list()
-
-    env = GBGym(device=DEVICE, speed=0, live_feed=live_feed)
-    n_actions = env.action_space.shape[0]
-
-    torch.device(DEVICE)
-
-    # Get the number of state observations
-    state, info = env.reset()
-
-    policy_net = TetrisNN(n_actions).to(DEVICE)
-
-    if "--load" in sys.argv:
-        print("LOADING PRE-TRAINED MODEL")
-        policy_net.load_state_dict(torch.load("model.pt"))
-        policy_net.eval()
-
-    target_net = TetrisNN(n_actions).to(DEVICE)
-    target_net.load_state_dict(policy_net.state_dict())
-
-    optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
-    memory = ReplayMemory(MEMORY_SIZE)
-
-    num_episodes = 20000
-
-    for i_episode in range(num_episodes):
-        episode_score = 0
-        start = time.time()
-
-        # Initialize the environment and get it's state
-        state, info = env.reset()
-        state = state.unsqueeze(0)
-        print("Starting episode... [%d/%d]" % (i_episode + 1, num_episodes))
-
-        for t in count():
-            action = select_action(policy_net, env, state)
-            observation, reward, terminated, truncated = env.step(action.item())
-            episode_score += reward
-
-            reward = torch.tensor([reward], device=DEVICE)
-            done = terminated or truncated
-
-            if terminated:
-                next_state = None
-            else:
-                next_state = observation.unsqueeze(0)
-
-            # Store the transition in memory
-            memory.push(state, action, next_state, reward)
-
-            # Move to the next state
-            state = next_state
-
-            # Perform one step of the optimization (on the policy network)
-            optimize_model(policy_net, target_net, memory, optimizer)
-
-            # Soft update of the target network's weights
-            # θ′ ← τ θ + (1 −τ )θ′
-            target_net_state_dict = target_net.state_dict()
-            policy_net_state_dict = policy_net.state_dict()
-
-            for key in policy_net_state_dict:
-                target_net_state_dict[key] = policy_net_state_dict[
-                    key
-                ] * TAU + target_net_state_dict[key] * (1 - TAU)
-            target_net.load_state_dict(target_net_state_dict)
-
-            if done:
-                episode_scores.append(episode_score)
-                break
-        end = time.time()
-        duration_s = end - start
-        print("Episode took %s seconds..." % str(duration_s))
-
-    torch.save(policy_net.state_dict(), "model.pt")
-
-    plot_durations(episode_scores, show_result=True)
 
 
 if __name__ == "__main__":
