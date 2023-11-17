@@ -123,7 +123,9 @@ class GBGym(Env):
         # just return an empty dict because info isn't being used...
         info = dict()
 
-        f = open("start0.state", "rb")
+        n = np.random.randint(low=0, high=3)
+        f = open(f"start{n}.state", "rb")
+
         self.gameboy.load_state(f)
         f.close()
         block_map = build_block_map(self.sm.screen().screen_ndarray())
@@ -322,18 +324,9 @@ def main():
                 piece_state = new_piece_state
                 print(piece_state)
 
-            # if is_game_over:
-            #     print("GAME IS OVER :(")
-            #     break
-
-        f = open('start2.state', 'wb')
-        gb.save_state(f)
-        f.close()
-
-        # print(read_lines(screen))
-        # print(read_score(screen))
-        # fig = px.imshow(screen)
-        # fig.show()
+            if is_game_over:
+                print("GAME IS OVER :(")
+                break
 
 
 def start_gameboy(speed=1):
@@ -345,11 +338,6 @@ def start_gameboy(speed=1):
     f = open(f"start{n}.state", "rb")
     gb.load_state(f)
     f.close()
-
-    # gb.send_input(pb.WindowEvent.PRESS_BUTTON_START)
-    # gb.tick()
-    # gb.send_input(pb.WindowEvent.RELEASE_BUTTON_START)
-    # gb.tick()
 
     return gb
 
