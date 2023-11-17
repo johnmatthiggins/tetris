@@ -123,7 +123,7 @@ class GBGym(Env):
         # just return an empty dict because info isn't being used...
         info = dict()
 
-        f = open("start2.state", "rb")
+        f = open("start0.state", "rb")
         self.gameboy.load_state(f)
         f.close()
         block_map = build_block_map(self.sm.screen().screen_ndarray())
@@ -287,7 +287,7 @@ def main():
         piece_state = _get_piece_state(gb)
         old_game_score = 0
 
-        wait_n_seconds(gb, 2)
+        # wait_n_seconds(gb, 2)
 
         while not gb.tick():
             screen = sm.screen().screen_ndarray()
@@ -322,14 +322,18 @@ def main():
                 piece_state = new_piece_state
                 print(piece_state)
 
-            if is_game_over:
-                print("GAME IS OVER :(")
-                break
+            # if is_game_over:
+            #     print("GAME IS OVER :(")
+            #     break
 
-        print(read_lines(screen))
-        print(read_score(screen))
-        fig = px.imshow(screen)
-        fig.show()
+        f = open('start2.state', 'wb')
+        gb.save_state(f)
+        f.close()
+
+        # print(read_lines(screen))
+        # print(read_score(screen))
+        # fig = px.imshow(screen)
+        # fig.show()
 
 
 def start_gameboy(speed=1):
@@ -337,14 +341,15 @@ def start_gameboy(speed=1):
 
     gb.set_emulation_speed(target_speed=speed)
 
-    f = open("start2.state", "rb")
+    n = np.random.randint(low=0, high=3)
+    f = open(f"start{n}.state", "rb")
     gb.load_state(f)
     f.close()
 
-    gb.send_input(pb.WindowEvent.PRESS_BUTTON_START)
-    gb.tick()
-    gb.send_input(pb.WindowEvent.RELEASE_BUTTON_START)
-    gb.tick()
+    # gb.send_input(pb.WindowEvent.PRESS_BUTTON_START)
+    # gb.tick()
+    # gb.send_input(pb.WindowEvent.RELEASE_BUTTON_START)
+    # gb.tick()
 
     return gb
 
