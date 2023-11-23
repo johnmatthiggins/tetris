@@ -20,9 +20,8 @@ def bumpiness_score(block_map):
         diff = np.abs(bump_vector[i] - bump_vector[i - 1])
         bumpiness_score += diff
 
-    print(bump_vector)
-    print("bumpiness: %s" % str(bumpiness_score))
-    return bumpiness_score
+    # print(bump_vector)
+    return bumpiness_score, bump_vector
 
 
 def build_block_map(rgb_screen):

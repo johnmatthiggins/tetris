@@ -21,22 +21,22 @@ from state import find_empty_blocks
 from state import bumpiness_score
 
 FPS = 60
+GAME_OVER = np.load("game_over.npy")
 
 
 class GBGym(Env):
     def __init__(self, *, device="cpu", speed=0, live_feed=False):
         self.live_feed = live_feed
-        self.ticks = 0
         self.device = device
-        self.game_over_screen = np.load("game_over.npy")
-
         self.gameboy = start_gameboy(speed)
         self.sm = self.gameboy.botsupport_manager()
 
         # different actions possible...
-        self.action_space = np.arange(0, 41)
+        self.action_space = np.arange(0, 44)
         self.current_score = 0
         self.current_lines = 0
+        self.current_bumpiness = 0
+        self.current_emptiness = 0
 
         if live_feed:
             import matplotlib.pyplot as plt
@@ -56,11 +56,13 @@ class GBGym(Env):
 
     # step moves forward two frames...
     def step(self, action):
-        self.ticks += 1
         _make_move(action, self.gameboy, self.sm)
 
         new_score = self.score()
         new_line_count = self.lines()
+
+        line_diff = new_line_count - self.current_lines
+        score_diff = new_score - self.current_score
 
         # get numpy array that represents pixels...
         # chop out all the details other than the board...
@@ -68,28 +70,24 @@ class GBGym(Env):
 
         piece_state = _get_piece_state(self.gameboy)
         piece_vector = piece_state.to_vector()
-        bumpiness = bumpiness_score(block_map)
+
+        bumpiness, _ = bumpiness_score(block_map)
+        bump_diff = bumpiness - self.current_bumpiness
+
+        self.current_bumpiness = bumpiness
+
         empty_blocks = find_empty_blocks(block_map)
+        empty_diff = empty_blocks.sum() - self.current_emptiness
 
-        # reward is how much the score improved...
-        reward = (
-            self.current_score
-            + (100 * new_line_count)
-            - (bumpiness * 10)
-            - (empty_blocks.sum() * 10)
-        )
+        self.current_emptiness = empty_blocks.sum()
 
-        print("*" * 10)
-        print("EMPTY_BLOCKS: %s" % str(empty_blocks))
-        print("REWARD: %s" % str(reward))
-        input()
+        reward = score_diff + 10 * (line_diff) - bump_diff - empty_diff
 
         self.current_score = new_score
         self.current_lines = new_line_count
 
         if self.live_feed:
-            if self.ticks % 2 == 0:
-                self.image_feed.imshow(block_map_minus_top_two_lines)
+            self.image_feed.imshow(block_map_minus_top_two_lines)
 
         observation = np.concatenate([[piece_vector], block_map])
         observation = torch.tensor(
@@ -117,6 +115,11 @@ class GBGym(Env):
             plt.ioff()
 
     def reset(self):
+        self.current_score = 0
+        self.current_lines = 0
+        self.current_bumpiness = 0
+        self.current_emptiness = 0
+
         # just return an empty dict because info isn't being used...
         info = dict()
 
@@ -125,7 +128,10 @@ class GBGym(Env):
         f.close()
         block_map = build_block_map(self.sm.screen().screen_ndarray())
 
+        _, bump_vector = bumpiness_score(block_map)
+
         piece_state = _get_piece_state(self.gameboy).to_vector()
+
         state = np.concatenate([[piece_state], block_map])
         state = torch.tensor([state], device=self.device, dtype=torch.float32)
 
@@ -149,7 +155,13 @@ def _is_game_over(rgb_screen):
         or np.all(seg4 == red_value)
         or np.all(seg5 == red_value)
         or np.all(seg6 == red_value)
+        or _is_game_over_screen_showing(rgb_screen)
     )
+
+
+def _is_game_over_screen_showing(rgb_screen):
+    relevant_part = rgb_screen[21 : 68 + 1, 29 : 84 + 1]
+    return np.all(relevant_part == GAME_OVER)
 
 
 @dataclass
@@ -314,6 +326,8 @@ def main():
                 print("GAME IS OVER :(")
                 break
 
+        print(read_lines(screen))
+        print(read_score(screen))
         fig = px.imshow(screen)
         fig.show()
 
