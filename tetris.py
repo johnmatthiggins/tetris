@@ -22,6 +22,7 @@ from state import bumpiness_score
 
 Transition = namedtuple("Transition", ("state", "action", "next_state", "reward"))
 
+
 def main():
     live_feed = "--live-feed" in sys.argv
 
@@ -104,7 +105,6 @@ def main():
     plot_durations(episode_scores, show_result=True)
 
 
-
 def get_device():
     device = "cpu"
     if not torch.backends.mps.is_available():
@@ -126,7 +126,9 @@ def get_device():
 
     return device
 
+
 DEVICE = get_device()
+
 
 class ReplayMemory(object):
     def __init__(self, capacity):
@@ -217,6 +219,7 @@ TAU = 0.005
 LR = 1e-6
 
 MEMORY_SIZE = 3000
+
 
 def select_action(policy_net, env, state):
     global steps_done

@@ -41,20 +41,17 @@ def build_block_map(rgb_screen):
 
 
 def find_empty_blocks(block_map):
-    block_map = block_map[2:, :]
+    block_map = np.flip(block_map[2:, :], axis=0)
     state = torch.zeros((10,))
 
     for i in range(block_map.shape[1]):
         strip = block_map[:, i]
         if np.any(strip > 0):
-            end = np.argmax(strip > 0)
+            end = strip.shape[0] - np.argmax(np.flip(strip) > 0) - 1
             j = 0
-            while j < (strip.shape[0] - end - 1):
-                y_offset = strip.shape[0] - j - 1
-
-                if strip[y_offset] > 0:
+            while j < end:
+                if strip[j] == 0:
                     state[i] += 1
 
                 j += 1
-
     return state
