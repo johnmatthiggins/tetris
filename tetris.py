@@ -22,7 +22,6 @@ from state import bumpiness_score
 
 Transition = namedtuple("Transition", ("state", "action", "next_state", "reward"))
 
-
 def main():
     live_feed = "--live-feed" in sys.argv
 
@@ -49,7 +48,7 @@ def main():
     optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
     memory = ReplayMemory(MEMORY_SIZE)
 
-    num_episodes = 10000
+    num_episodes = 2000
 
     for i_episode in range(num_episodes):
         episode_score = 0
@@ -151,20 +150,19 @@ class TetrisNN(nn.Module):
         super().__init__()
         self.device = get_device()
 
-        self.convLeft1 = nn.Conv2d(1, 64, 5)
-        self.convLeft2 = nn.Conv2d(64, 64, 3)
-        self.convLeft3 = nn.Conv2d(64, 64, 3)
+        self.conv1 = nn.Conv2d(1, 128, 1)
+        self.conv2 = nn.Conv2d(128, 128, 1)
+        self.conv3 = nn.Conv2d(128, 128, 3)
+        self.conv4 = nn.Conv2d(128, 128, 3)
+        self.conv5 = nn.Conv2d(128, 128, 3)
+        self.conv6 = nn.Conv2d(128, 64, 3)
 
-        self.convRight1 = nn.Conv1d(1, 64, 3)
-        self.convRight2 = nn.Conv1d(64, 64, 3)
-        self.convRight3 = nn.Conv1d(64, 64, 3)
-
-        self.fc1 = nn.Linear(1542, 64)
+        self.fc1 = nn.Linear(1286, 64)
         self.fc2 = nn.Linear(64, 64)
         self.fc3 = nn.Linear(64, 64)
-        self.fc3 = nn.Linear(64, 64)
-        self.fc3 = nn.Linear(64, 64)
-        self.fc4 = nn.Linear(64, n_actions)
+        self.fc4 = nn.Linear(64, 64)
+        self.fc5 = nn.Linear(64, 64)
+        self.fc6 = nn.Linear(64, n_actions)
 
         self.vbump_score = lambda arr: torch.tensor(
             [[bumpiness_score(item)[1]] for item in arr],
@@ -182,24 +180,24 @@ class TetrisNN(nn.Module):
         screen_range = torch.arange(start=1, end=x.shape[2], dtype=torch.long)
         x = x[:, :, screen_range, :]
 
-        # terrain formed by blocks...
-        bump_vectors = self.vbump_score(x[:, 0, :, :].cpu().numpy())
+#         # terrain formed by blocks...
+#         bump_vectors = self.vbump_score(x[:, 0, :, :].cpu().numpy())
 
-        leftX = F.relu(self.convLeft1(x))
-        leftX = F.relu(self.convLeft2(leftX))
-        leftX = F.relu(self.convLeft3(leftX))
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
+        x = F.relu(self.conv4(x))
+        x = F.relu(self.conv5(x))
+        x = F.relu(self.conv6(x))
 
-        rightX = F.relu(self.convRight1(bump_vectors))
-        rightX = F.relu(self.convRight2(rightX))
-        rightX = F.relu(self.convRight3(rightX))
-
-        x = torch.cat(
-            [torch.flatten(leftX, 1), piece_state, torch.flatten(rightX, 1)], dim=1
-        )
+        x = torch.flatten(x, 1)
+        x = torch.cat([x, piece_state], dim=1)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
-        x = self.fc4(x)
+        x = F.relu(self.fc4(x))
+        x = F.relu(self.fc5(x))
+        x = self.fc6(x)
         return x
 
 
