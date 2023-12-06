@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 import time
 import sys
+import io
 
 import pyboy as pb
 from gymnasium import Env
@@ -25,7 +26,12 @@ GAME_OVER = np.load("game_over.npy")
 
 
 class GBGym(Env):
-    def __init__(self, *, device="cpu", speed=0, live_feed=False):
+    def __init__(self, *, device="cpu", speed=0, live_feed=False, step_backwards=False):
+        # add functionality for stepping backwards...
+        self.step_backwards = step_backwards
+        if self.step_backwards:
+            self.previous_state = None
+
         self.live_feed = live_feed
         self.device = device
         self.gameboy = start_gameboy(speed)
@@ -38,14 +44,6 @@ class GBGym(Env):
         self.current_bumpiness = 0
         self.current_emptiness = 0
 
-        if live_feed:
-            import matplotlib.pyplot as plt
-
-            ax = plt.subplot(1, 1, 1)
-            self.image_feed = ax
-            plt.ion()
-            plt.show()
-
     def score(self):
         game_score = read_score(self.sm.screen().screen_ndarray())
         return game_score
@@ -56,6 +54,11 @@ class GBGym(Env):
 
     # step moves forward two frames...
     def step(self, action):
+        # save state if stepping backwards is enabled...
+        if self.step_backwards:
+            self.previous_state = io.BytesIO()
+            self.gameboy.save_state(self.previous_state)
+
         _make_move(action, self.gameboy, self.sm)
 
         new_score = self.score()
@@ -83,6 +86,10 @@ class GBGym(Env):
 
         reward = score_diff + 10 * (line_diff) - bump_diff - empty_diff
 
+        self.previous_bumpiness = self.current_bumpiness
+        self.previous_lines = self.current_lines
+        self.previous_score = self.current_score
+
         self.current_score = new_score
         self.current_lines = new_line_count
 
@@ -99,6 +106,14 @@ class GBGym(Env):
 
         # added extra
         return (observation, reward, terminated, truncated)
+    
+    def step_back(self):
+        self.current_bumpiness = self.previous_bumpiness
+        self.current_lines = self.previous_lines
+        self.current_score = self.previous_score
+
+        self.gameboy.load_state(self.previous_state)
+
 
     # kinda janky but it hasn't failed me yet...
     def is_game_over(self):
@@ -112,10 +127,14 @@ class GBGym(Env):
             plt.ioff()
 
     def reset(self):
-        self.current_score = 0
-        self.current_lines = 0
-        self.current_bumpiness = 0
-        self.current_emptiness = 0
+        self.current_score      = 0
+        self.current_lines      = 0
+        self.current_bumpiness  = 0
+        self.current_emptiness  = 0
+
+        self.previous_bumpiness = 0
+        self.previous_lines     = 0
+        self.previous_score     = 0
 
         # just return an empty dict because info isn't being used...
         info = dict()
