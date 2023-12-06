@@ -71,7 +71,7 @@ class GBGym(Env):
         piece_state = _get_piece_state(self.gameboy)
         piece_vector = piece_state.to_vector()
 
-        bumpiness, _ = bumpiness_score(block_map)
+        bumpiness, bump_vector = bumpiness_score(block_map)
         bump_diff = bumpiness - self.current_bumpiness
 
         self.current_bumpiness = bumpiness
@@ -86,10 +86,7 @@ class GBGym(Env):
         self.current_score = new_score
         self.current_lines = new_line_count
 
-        if self.live_feed:
-            self.image_feed.imshow(block_map_minus_top_two_lines)
-
-        observation = np.concatenate([[piece_vector], block_map])
+        observation = np.concatenate([piece_vector, bump_vector])
         observation = torch.tensor(
             [observation], device=self.device, dtype=torch.float32
         )
@@ -134,10 +131,12 @@ class GBGym(Env):
 
         piece_state = _get_piece_state(self.gameboy).to_vector()
 
-        state = np.concatenate([[piece_state], block_map])
-        state = torch.tensor([state], device=self.device, dtype=torch.float32)
+        observation = np.concatenate([piece_state, bump_vector])
+        observation = torch.tensor(
+            [observation], device=self.device, dtype=torch.float32
+        )
 
-        return (state, info)
+        return (observation, info)
 
 
 def _is_game_over(rgb_screen):
