@@ -13,14 +13,19 @@ def main():
             _, reward, terminated, _ = gym.step(action)
 
             if terminated:
-                rewards[action] = -1
+                rewards[action] = -69
             else:
                 rewards[action] = reward
-                gym.step_back()
-        if np.all(rewards == -1):
+
+            gym.step_back()
+
+        if np.all(rewards == -69):
             print('ending game...')
             break
-                    
+
+        best_action = np.argmax(rewards)
+        gym.step(best_action)
+        print(rewards)
 
 if __name__ == '__main__':
     main()

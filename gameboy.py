@@ -21,6 +21,8 @@ from state import build_block_map
 from state import find_empty_blocks
 from state import bumpiness_score
 
+from tetris import Transition
+
 FPS = 60
 GAME_OVER = np.load("game_over.npy")
 
@@ -56,16 +58,15 @@ class GBGym(Env):
     def step(self, action):
         # save state if stepping backwards is enabled...
         if self.step_backwards:
-            self.previous_state = io.BytesIO()
-            self.gameboy.save_state(self.previous_state)
+            self.previous_state = 'back.state'
+            f = open(self.previous_state, 'wb')
+            self.gameboy.save_state(f)
+            f.close()
 
         _make_move(action, self.gameboy, self.sm)
 
-        new_score = self.score()
-        new_line_count = self.lines()
-
-        line_diff = new_line_count - self.current_lines
-        score_diff = new_score - self.current_score
+        point_score = self.score()
+        line_score = self.lines()
 
         # get numpy array that represents pixels...
         # chop out all the details other than the board...
@@ -75,23 +76,21 @@ class GBGym(Env):
         piece_vector = piece_state.to_vector()
 
         bumpiness, bump_vector = bumpiness_score(block_map)
-        bump_diff = bumpiness - self.current_bumpiness
 
-        self.current_bumpiness = bumpiness
+        empty_blocks = find_empty_blocks(block_map).sum()
 
-        empty_blocks = find_empty_blocks(block_map)
-        empty_diff = empty_blocks.sum() - self.current_emptiness
+        # print('*' * 20)
+        # print('point_score =', point_score)
+        # print('line_score =', line_score)
+        # print('bumpiness =', bumpiness)
+        # print('empty_blocks =', empty_blocks)
+        # print('*' * 20)
+        new_aggregated_score = point_score + 10 * (line_score) - (bumpiness * 1) - (empty_blocks * 10)
+        # new_aggregated_score = -empty_blocks
+        reward = new_aggregated_score - self.current_aggregated_score
 
-        self.current_emptiness = empty_blocks.sum()
-
-        reward = score_diff + 10 * (line_diff) - bump_diff - empty_diff
-
-        self.previous_bumpiness = self.current_bumpiness
-        self.previous_lines = self.current_lines
-        self.previous_score = self.current_score
-
-        self.current_score = new_score
-        self.current_lines = new_line_count
+        self.prev_aggregated_score = self.current_aggregated_score
+        self.current_aggregated_score = new_aggregated_score
 
         observation = np.concatenate([piece_vector, bump_vector])
         observation = torch.tensor(
@@ -108,11 +107,12 @@ class GBGym(Env):
         return (observation, reward, terminated, truncated)
     
     def step_back(self):
-        self.current_bumpiness = self.previous_bumpiness
-        self.current_lines = self.previous_lines
-        self.current_score = self.previous_score
+        self.current_aggregated_score = self.prev_aggregated_score
+        self.previous_aggregated_score = 0
 
-        self.gameboy.load_state(self.previous_state)
+        f = open(self.previous_state, 'rb')
+        self.gameboy.load_state(f)
+        f.close()
 
 
     # kinda janky but it hasn't failed me yet...
@@ -127,14 +127,8 @@ class GBGym(Env):
             plt.ioff()
 
     def reset(self):
-        self.current_score      = 0
-        self.current_lines      = 0
-        self.current_bumpiness  = 0
-        self.current_emptiness  = 0
-
-        self.previous_bumpiness = 0
-        self.previous_lines     = 0
-        self.previous_score     = 0
+        self.current_aggregated_score = 0
+        self.prev_aggregated_score = 0
 
         # just return an empty dict because info isn't being used...
         info = dict()
