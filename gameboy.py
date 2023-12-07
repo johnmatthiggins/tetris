@@ -21,8 +21,6 @@ from state import build_block_map
 from state import find_empty_blocks
 from state import bumpiness_score
 
-from tetris import Transition
-
 FPS = 60
 GAME_OVER = np.load("game_over.npy")
 
@@ -31,8 +29,6 @@ class GBGym(Env):
     def __init__(self, *, device="cpu", speed=0, live_feed=False, step_backwards=False):
         # add functionality for stepping backwards...
         self.step_backwards = step_backwards
-        if self.step_backwards:
-            self.previous_state = None
 
         self.live_feed = live_feed
         self.device = device
@@ -41,10 +37,6 @@ class GBGym(Env):
 
         # different actions possible...
         self.action_space = np.arange(0, 44)
-        self.current_score = 0
-        self.current_lines = 0
-        self.current_bumpiness = 0
-        self.current_emptiness = 0
 
     def score(self):
         game_score = read_score(self.sm.screen().screen_ndarray())
@@ -58,10 +50,8 @@ class GBGym(Env):
     def step(self, action):
         # save state if stepping backwards is enabled...
         if self.step_backwards:
-            self.previous_state = 'back.state'
-            f = open(self.previous_state, 'wb')
-            self.gameboy.save_state(f)
-            f.close()
+            with open('back.state', 'wb') as f:
+                self.gameboy.save_state(f)
 
         _make_move(action, self.gameboy, self.sm)
 
@@ -79,14 +69,7 @@ class GBGym(Env):
 
         empty_blocks = find_empty_blocks(block_map).sum()
 
-        # print('*' * 20)
-        # print('point_score =', point_score)
-        # print('line_score =', line_score)
-        # print('bumpiness =', bumpiness)
-        # print('empty_blocks =', empty_blocks)
-        # print('*' * 20)
         new_aggregated_score = point_score + 10 * (line_score) - (bumpiness * 1) - (empty_blocks * 10)
-        # new_aggregated_score = -empty_blocks
         reward = new_aggregated_score - self.current_aggregated_score
 
         self.prev_aggregated_score = self.current_aggregated_score
@@ -110,9 +93,8 @@ class GBGym(Env):
         self.current_aggregated_score = self.prev_aggregated_score
         self.previous_aggregated_score = 0
 
-        f = open(self.previous_state, 'rb')
-        self.gameboy.load_state(f)
-        f.close()
+        with open('back.state', 'rb') as f:
+            self.gameboy.load_state(f)
 
 
     # kinda janky but it hasn't failed me yet...
@@ -148,6 +130,7 @@ class GBGym(Env):
         observation = torch.tensor(
             [observation], device=self.device, dtype=torch.float32
         )
+        print(observation.shape)
 
         return (observation, info)
 
