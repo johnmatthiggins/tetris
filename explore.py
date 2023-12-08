@@ -10,8 +10,8 @@ def main():
     # reward,
 
     gym = GBGym(step_backwards=True)
-    GAME_COUNT = 3
-    GAME_LENGTH = 1000
+    GAME_COUNT = 5
+    GAME_LENGTH = 2000
 
     rewards = np.zeros(44)
     gym.reset()

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import sys
 import torch
 import numpy as np
 
@@ -29,11 +30,17 @@ torch.device(device)
 
 
 def main():
+    if len(sys.argv) > 1:
+        model_name = sys.argv[1]
+    else:
+        model_name = "model.pt"
+
+    print("loading %s" %(model_name))
     gb = GBGym(device=device, speed=1)
     model = TetrisNN(len(gb.action_space)).to(device)
 
     # load weights...
-    model.load_state_dict(torch.load("model.pt"))
+    model.load_state_dict(torch.load(model_name))
     model.eval()
 
     state, info = gb.reset()
