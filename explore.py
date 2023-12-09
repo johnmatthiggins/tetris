@@ -11,7 +11,7 @@ def main():
 
     gym = GBGym(step_backwards=True)
     GAME_COUNT = 5
-    GAME_LENGTH = 2000
+    GAME_LENGTH = 300
 
     rewards = np.zeros(44)
     gym.reset()
@@ -43,7 +43,8 @@ def main():
             best_action = np.argmax(rewards)
 
             index = game * GAME_LENGTH + turn
-            dataset[index, :] = datapoint
+            print('saving at array index = ', index)
+            dataset[index] = datapoint
 
             state, reward, _, _ = gym.step(best_action)
             state = state[0]

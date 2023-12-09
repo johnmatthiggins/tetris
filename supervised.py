@@ -7,7 +7,7 @@ import numpy as np
 from tetris import TetrisNN
 
 def main():
-    epochs = 4000
+    epochs = 5000
     model = TetrisNN(44).to('mps')
 
     # load weights...
