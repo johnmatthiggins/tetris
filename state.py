@@ -3,10 +3,6 @@ import cv2
 import numpy as np
 import plotly.express as px
 
-# local imports
-from piece import erase_piece
-
-
 def bumpiness_score(block_map):
     screen = block_map[2:, :]
     bump_vector = np.zeros(block_map.shape[1])

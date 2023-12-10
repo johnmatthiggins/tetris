@@ -7,7 +7,7 @@ import numpy as np
 from tetris import TetrisNN
 
 def main():
-    epochs = 5000
+    epochs = 50000
     model = TetrisNN(44).to('mps')
 
     # load weights...
@@ -16,7 +16,7 @@ def main():
 
     optimizer = optim.AdamW(model.parameters(), lr=1e-5, amsgrad=True)
     dataset = np.load('dataset.npy')
-    print(dataset.shape)
+
     X = torch.tensor(np.reshape(dataset[:, :20], newshape=(len(dataset), 1, 20)), device='mps', dtype=torch.float32)
     y = torch.tensor(dataset[:, 20:], device='mps', dtype=torch.float32)
 

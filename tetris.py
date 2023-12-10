@@ -45,7 +45,7 @@ def main():
     target_net = TetrisNN(n_actions).to(DEVICE)
     target_net.load_state_dict(policy_net.state_dict())
 
-    optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
+    optimizer = optim.RMSprop(policy_net.parameters(), lr=LR)
     memory = ReplayMemory(MEMORY_SIZE)
 
     num_episodes = 15000
@@ -98,6 +98,9 @@ def main():
         end = time.time()
         duration_s = end - start
         print("Episode took %s seconds..." % str(duration_s))
+
+        if i_episode % 1000 == 0:
+            torch.save(policy_net.state_dict(), "model_tmp.pt")
 
     torch.save(policy_net.state_dict(), "model.pt")
 
@@ -155,14 +158,22 @@ class TetrisNN(nn.Module):
         self.conv3 = nn.Conv1d(128, 128, 3)
         self.conv4 = nn.Conv1d(128, 128, 3)
         self.conv5 = nn.Conv1d(128, 128, 3)
-        self.conv6 = nn.Conv1d(128, 64, 3)
+        self.conv6 = nn.Conv1d(128, 128, 3)
+        self.conv7 = nn.Conv1d(128, 128, 3)
+        self.conv8 = nn.Conv1d(128, 64, 3)
 
-        self.fc1 = nn.Linear(710, 128)
+        self.fc1 = nn.Linear(454, 128)
         self.fc2 = nn.Linear(128, 128)
-        self.fc3 = nn.Linear(128, 64)
-        self.fc4 = nn.Linear(64, 64)
-        self.fc5 = nn.Linear(64, 64)
-        self.fc6 = nn.Linear(64, n_actions)
+        self.fc3 = nn.Linear(128, 128)
+        self.fc4 = nn.Linear(128, 128)
+        self.fc5 = nn.Linear(128, 128)
+        self.fc6 = nn.Linear(128, 128)
+        self.fc7 = nn.Linear(128, 128)
+        self.fc8 = nn.Linear(128, 128)
+        self.fc9 = nn.Linear(128, 64)
+        self.fc10 = nn.Linear(64, 64)
+        self.fc11 = nn.Linear(64, 64)
+        self.fc12 = nn.Linear(64, n_actions)
 
     def forward(self, x):
         piece_indexes = torch.arange(start=0, end=6, dtype=torch.long)
@@ -180,6 +191,8 @@ class TetrisNN(nn.Module):
         x = F.relu(self.conv4(x))
         x = F.relu(self.conv5(x))
         x = F.relu(self.conv6(x))
+        x = F.relu(self.conv7(x))
+        x = F.relu(self.conv8(x))
 
         x = torch.flatten(x, 1)
         x = torch.cat([x, piece_state], dim=1)
@@ -189,8 +202,14 @@ class TetrisNN(nn.Module):
         x = F.relu(self.fc3(x))
         x = F.relu(self.fc4(x))
         x = F.relu(self.fc5(x))
+        x = F.relu(self.fc6(x))
+        x = F.relu(self.fc7(x))
+        x = F.relu(self.fc8(x))
+        x = F.relu(self.fc9(x))
+        x = F.relu(self.fc10(x))
+        x = F.relu(self.fc11(x))
 
-        return self.fc6(x)
+        return self.fc12(x)
 
 
 # BATCH_SIZE is the number of transitions sampled from the replay buffer
@@ -206,7 +225,7 @@ EPS_START = 0.9
 EPS_END = 0.05
 EPS_DECAY = 1000
 TAU = 0.005
-LR = 1e-6
+LR = 1e-4
 
 MEMORY_SIZE = 2048
 

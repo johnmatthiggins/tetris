@@ -66,10 +66,13 @@ class GBGym(Env):
         piece_vector = piece_state.to_vector()
 
         bumpiness, bump_vector = bumpiness_score(block_map)
+        height = np.sum(bump_vector)
 
         empty_blocks = find_empty_blocks(block_map).sum()
 
-        new_aggregated_score = point_score + 10 * (line_score) - (bumpiness * 1) - (empty_blocks * 10)
+        # new_aggregated_score = point_score + 10 * (line_score) - (bumpiness * 1) - (empty_blocks * 10)
+        new_aggregated_score = (point_score - 0.51 * height + 0.76 * line_score
+                                - 10 * empty_blocks - 0.18 * bumpiness)
         reward = new_aggregated_score - self.current_aggregated_score
 
         self.prev_aggregated_score = self.current_aggregated_score

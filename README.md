@@ -15,6 +15,16 @@ The screen is first turned black and white and then it is sliced so it only incl
 the tetris board without any of the score, line count, level, or next piece information
 The end result is an array that represents the max height of each column of blocks.
 
+todo: describe feature engineering more.
+
+## Optimization Methodology
+
+todo: describe optimization
+
+## Gameplay
+
+todo: show gameplay with gif
+
 ## Thanks
 
 * Alexey Pajitnov, for designing such a wonderful game.
