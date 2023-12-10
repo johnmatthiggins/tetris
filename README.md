@@ -1,6 +1,6 @@
 # Tetris Neural Network
 
-![./resources/tetris.png]
+![A game of Tetris DX](./resources/tetris.png)
 
 ## GOALS
 
