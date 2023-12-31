@@ -5,18 +5,17 @@ import plotly.express as px
 
 def bumpiness_score(block_map):
     screen = block_map[2:, :]
-    bump_vector = np.zeros(block_map.shape[1])
+    bump_vector = torch.zeros(block_map.shape[1])
     bumpiness_score = 0
 
     for i in range(screen.shape[1]):
-        if np.any(screen[:, i] > 0):
-            bump_vector[i] = screen.shape[0] - np.argmax(screen[:, i] > 0)
+        if torch.any(screen[:, i] > 0):
+            bump_vector[i] = screen.shape[0] - torch.argmax(screen[:, i] > 0)
 
     for i in range(1, screen.shape[1]):
-        diff = np.abs(bump_vector[i] - bump_vector[i - 1])
+        diff = torch.abs(bump_vector[i] - bump_vector[i - 1])
         bumpiness_score += diff
 
-    # print(bump_vector)
     return bumpiness_score, bump_vector
 
 
@@ -37,13 +36,13 @@ def build_block_map(rgb_screen):
 
 
 def find_empty_blocks(block_map):
-    block_map = np.flip(block_map[2:, :], axis=0)
+    block_map = torch.flip(block_map[2:, :], dims=(0,))
     state = torch.zeros((10,))
 
     for i in range(block_map.shape[1]):
         strip = block_map[:, i]
-        if np.any(strip > 0):
-            end = strip.shape[0] - np.argmax(np.flip(strip) > 0) - 1
+        if torch.any(strip > 0):
+            end = strip.shape[0] - torch.argmax(torch.flip(strip, dims=(0,)) > 0).item() - 1
             j = 0
             while j < end:
                 if strip[j] == 0:

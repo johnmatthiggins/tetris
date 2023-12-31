@@ -6,10 +6,10 @@ from pygame import Rect, Surface
 import random
 import os
 
-from tetrominoes import list_of_tetrominoes
-from tetrominoes import rotate
+from matris.tetrominoes import list_of_tetrominoes
+from matris.tetrominoes import rotate
 
-from scores import load_score, write_score
+from matris.scores import load_score, write_score
 
 
 class GameOver(Exception):
@@ -533,6 +533,9 @@ class Game(object):
 
     def lines(self):
         return self.matris.lines
+
+    def score(self):
+        return self.matris.score
 
     def redraw(self):
         """

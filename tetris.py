@@ -17,7 +17,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 
 # local imports
-from gameboy import GBGym
+from tetrisgym import TetrisGym
 from state import bumpiness_score
 
 Transition = namedtuple("Transition", ("state", "action", "next_state", "reward"))
@@ -27,7 +27,7 @@ def main():
 
     episode_scores = list()
 
-    env = GBGym(device=DEVICE, speed=0, live_feed=live_feed)
+    env = TetrisGym(device=DEVICE)
     n_actions = env.action_space.shape[0]
 
     torch.device(DEVICE)
@@ -162,7 +162,7 @@ class TetrisNN(nn.Module):
         self.conv7 = nn.Conv1d(128, 128, 3)
         self.conv8 = nn.Conv1d(128, 64, 3)
 
-        self.fc1 = nn.Linear(454, 128)
+        self.fc1 = nn.Linear(452, 128)
         self.fc2 = nn.Linear(128, 128)
         self.fc3 = nn.Linear(128, 128)
         self.fc4 = nn.Linear(128, 128)
@@ -176,7 +176,7 @@ class TetrisNN(nn.Module):
         self.fc12 = nn.Linear(64, n_actions)
 
     def forward(self, x):
-        piece_indexes = torch.arange(start=0, end=6, dtype=torch.long)
+        piece_indexes = torch.arange(start=0, end=4, dtype=torch.long)
 
         # extract piece state vector
         piece_state = x[:, 0, piece_indexes]
