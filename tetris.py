@@ -48,7 +48,7 @@ def main():
     optimizer = optim.RMSprop(policy_net.parameters(), lr=LR)
     memory = ReplayMemory(MEMORY_SIZE)
 
-    num_episodes = 15000
+    num_episodes = 1000
 
     for i_episode in range(num_episodes):
         episode_score = 0
