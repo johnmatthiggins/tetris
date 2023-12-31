@@ -133,7 +133,6 @@ class GBGym(Env):
         observation = torch.tensor(
             [observation], device=self.device, dtype=torch.float32
         )
-        print(observation.shape)
 
         return (observation, info)
 

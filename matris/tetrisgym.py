@@ -7,6 +7,8 @@ import gymnasium as gym
 from matris import Game
 from matris import create_screen
 
+from state import bumpiness_score
+
 class TetrisGym(gym.Env):
     def __init__(self):
         self.screen = create_screen()
