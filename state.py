@@ -4,8 +4,8 @@ import numpy as np
 import plotly.express as px
 
 def bumpiness_score(block_map):
-    screen = block_map[2:, :]
-    bump_vector = torch.zeros(block_map.shape[1])
+    screen = torch.tensor(block_map[2:, :], device="mps")
+    bump_vector = torch.zeros(block_map.shape[1], device="mps")
     bumpiness_score = 0
 
     for i in range(screen.shape[1]):
@@ -19,9 +19,12 @@ def bumpiness_score(block_map):
     return bumpiness_score, bump_vector
 
 
-def build_block_map(rgb_screen):
+def build_block_map(rgb_screen, tensor=False):
     bw_screen = cv2.cvtColor(rgb_screen, cv2.COLOR_BGR2GRAY)
-    state = np.zeros(shape=(18, 10))
+    if tensor:
+        state = torch.zeros(size=(18, 10))
+    else:
+        state = np.zeros(shape=(18, 10))
 
     for i in range(10):
         found_empty = False
@@ -32,17 +35,22 @@ def build_block_map(rgb_screen):
             space_filled = bw_screen[y_offset, x_offset] == 0
             state[j, i] = 1 if space_filled else 0
 
-    return np.flip(state, axis=0)
+    if tensor:
+        result = torch.flip(state, dims=(0,))
+    else:
+        result = np.flip(state, axis=0)
+
+    return result
 
 
 def find_empty_blocks(block_map):
     block_map = torch.flip(block_map[2:, :], dims=(0,))
-    state = torch.zeros((10,))
+    state = torch.zeros((10,), device='mps')
 
     for i in range(block_map.shape[1]):
         strip = block_map[:, i]
         if torch.any(strip > 0):
-            end = strip.shape[0] - torch.argmax(torch.flip(strip, dims=(0,)) > 0).item() - 1
+            end = strip.shape[0] - torch.argmax((torch.flip(strip, dims=(0,)) > 0).to(torch.long)).item() - 1
             j = 0
             while j < end:
                 if strip[j] == 0:

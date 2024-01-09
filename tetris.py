@@ -17,7 +17,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 
 # local imports
-from tetrisgym import TetrisGym
+from gameboy import GBGym
 from state import bumpiness_score
 
 Transition = namedtuple("Transition", ("state", "action", "next_state", "reward"))
@@ -27,7 +27,7 @@ def main():
 
     episode_scores = list()
 
-    env = TetrisGym(device=DEVICE)
+    env = GBGym(device=DEVICE)
     n_actions = env.action_space.shape[0]
 
     torch.device(DEVICE)
@@ -170,10 +170,12 @@ class TetrisNN(nn.Module):
         self.fc6 = nn.Linear(128, 128)
         self.fc7 = nn.Linear(128, 128)
         self.fc8 = nn.Linear(128, 128)
-        self.fc9 = nn.Linear(128, 64)
-        self.fc10 = nn.Linear(64, 64)
-        self.fc11 = nn.Linear(64, 64)
-        self.fc12 = nn.Linear(64, n_actions)
+        self.fc9 = nn.Linear(128, 128)
+        self.fc10 = nn.Linear(128, 128)
+        self.fc11 = nn.Linear(128, 64)
+        self.fc12 = nn.Linear(64, 64)
+        self.fc13 = nn.Linear(64, 64)
+        self.fc14 = nn.Linear(64, n_actions)
 
     def forward(self, x):
         piece_indexes = torch.arange(start=0, end=4, dtype=torch.long)
@@ -208,8 +210,10 @@ class TetrisNN(nn.Module):
         x = F.relu(self.fc9(x))
         x = F.relu(self.fc10(x))
         x = F.relu(self.fc11(x))
+        x = F.relu(self.fc12(x))
+        x = F.relu(self.fc13(x))
 
-        return self.fc12(x)
+        return self.fc14(x)
 
 
 # BATCH_SIZE is the number of transitions sampled from the replay buffer
@@ -225,7 +229,7 @@ EPS_START = 0.9
 EPS_END = 0.05
 EPS_DECAY = 1000
 TAU = 0.005
-LR = 1e-4
+LR = 1e-5
 
 MEMORY_SIZE = 2048
 

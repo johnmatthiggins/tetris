@@ -60,13 +60,13 @@ class GBGym(Env):
 
         # get numpy array that represents pixels...
         # chop out all the details other than the board...
-        block_map = build_block_map(self.sm.screen().screen_ndarray())
+        block_map = build_block_map(self.sm.screen().screen_ndarray(), tensor=True)
 
         piece_state = _get_piece_state(self.gameboy)
-        piece_vector = piece_state.to_vector()
+        piece_vector = piece_state.to_vector(tensor=True)
 
         bumpiness, bump_vector = bumpiness_score(block_map)
-        height = np.sum(bump_vector)
+        height = torch.sum(bump_vector)
 
         empty_blocks = find_empty_blocks(block_map).sum()
 
@@ -78,10 +78,10 @@ class GBGym(Env):
         self.prev_aggregated_score = self.current_aggregated_score
         self.current_aggregated_score = new_aggregated_score
 
-        observation = np.concatenate([piece_vector, bump_vector])
-        observation = torch.tensor(
-            [observation], device=self.device, dtype=torch.float32
-        )
+        observation = torch.unsqueeze(
+                torch.concatenate([piece_vector, bump_vector]),
+                0
+            )
 
         truncated = False
         terminated = self.is_game_over()
@@ -123,16 +123,16 @@ class GBGym(Env):
 
         self.gameboy.load_state(f)
         f.close()
-        block_map = build_block_map(self.sm.screen().screen_ndarray())
+        block_map = build_block_map(self.sm.screen().screen_ndarray(), tensor=True)
 
         _, bump_vector = bumpiness_score(block_map)
 
-        piece_state = _get_piece_state(self.gameboy).to_vector()
+        piece_state = _get_piece_state(self.gameboy).to_vector(tensor=True)
 
-        observation = np.concatenate([piece_state, bump_vector])
-        observation = torch.tensor(
-            [observation], device=self.device, dtype=torch.float32
-        )
+        observation = torch.unsqueeze(
+                torch.concatenate([piece_state, bump_vector]),
+                0
+            )
 
         return (observation, info)
 
@@ -172,21 +172,23 @@ class PieceState:
     previous_piece: int
     rotation_position: int
 
-    def to_vector(self):
-        return np.array(
-            [
-                self.x,
-                self.y,
-                self.next_piece,
-                self.previous_piece,
-                self.current_piece,
-                self.rotation_position,
-                0,
-                0,
-                0,
-                0,
-            ]
-        )
+    def to_vector(self, tensor=False, device='mps'):
+        array = [
+            self.x,
+            self.y,
+            self.next_piece,
+            self.previous_piece,
+            self.current_piece,
+            self.rotation_position,
+            0,
+            0,
+            0,
+            0,
+        ]
+        if tensor:
+            return torch.tensor(array, device=device)
+        else:
+            return np.array(array)
 
 
 # returns vector composed of numbers representing
@@ -331,7 +333,8 @@ def start_gameboy(speed=1):
 
     gb.set_emulation_speed(target_speed=speed)
 
-    n = np.random.randint(low=0, high=3)
+    # n = np.random.randint(low=0, high=3)
+    n = 0
     f = open(f"start{n}.state", "rb")
     gb.load_state(f)
     f.close()
