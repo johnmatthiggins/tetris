@@ -335,7 +335,7 @@ def start_gameboy(speed=1):
 
     # n = np.random.randint(low=0, high=3)
     n = 0
-    f = open(f"start{n}.state", "rb")
+    f = open(f"states/start{n}.state", "rb")
     gb.load_state(f)
     f.close()
 
