@@ -71,7 +71,7 @@ class GBGym(Env):
         empty_blocks = find_empty_blocks(block_map).sum()
 
         # new_aggregated_score = point_score + 10 * (line_score) - (bumpiness * 1) - (empty_blocks * 10)
-        new_aggregated_score = (point_score - 0.51 * height + line_score ** 2
+        new_aggregated_score = (point_score - 0.51 * height + (line_score ** 2) * 100
                                 - 10 * empty_blocks - 0.18 * bumpiness)
         reward = new_aggregated_score - self.current_aggregated_score
 
@@ -118,8 +118,10 @@ class GBGym(Env):
         # just return an empty dict because info isn't being used...
         info = dict()
 
-        n = np.random.randint(low=0, high=3)
-        f = open(f"start{n}.state", "rb")
+        # n = np.random.randint(low=0, high=3)
+        n = 1
+
+        f = open(f"states/start{n}.state", "rb")
 
         self.gameboy.load_state(f)
         f.close()
@@ -334,7 +336,7 @@ def start_gameboy(speed=1):
     gb.set_emulation_speed(target_speed=speed)
 
     # n = np.random.randint(low=0, high=3)
-    n = 0
+    n = 1
     f = open(f"states/start{n}.state", "rb")
     gb.load_state(f)
     f.close()
